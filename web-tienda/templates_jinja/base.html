@@ -80,7 +80,7 @@
     <img class="miami-preloader__logo" src="/static/images/miami-logo-v4.webp" alt="" fetchpriority="high"/>
     <div class="miami-preloader__bar"><i></i></div>
   </div>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     (function(){var p=document.getElementById('miami-preloader');if(!p)return;var h=false;
     function hide(){if(h)return;h=true;p.classList.add('is-hidden');document.body.classList.remove('is-preloading');
     setTimeout(function(){if(p.parentNode)p.parentNode.removeChild(p)},600);}
@@ -147,7 +147,7 @@
   {% include "miami-scripts.tpl" %}
 
   {# Contador de carrito en el header (refleja el carrito persistente) #}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     fetch('/api/cart').then(r=>r.json()).then(function(c){
       var b=document.querySelector('[data-cart-count]'); if(b) b.textContent=c.count||0;
     }).catch(function(){});

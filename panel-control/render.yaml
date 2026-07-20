@@ -26,6 +26,9 @@ services:
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
+      # Clave de firma del panel: DISTINTA de la tienda (generada aparte).
+      - key: ADMIN_SECRET_KEY
+        generateValue: true
       - key: DEV_MODE
         value: "false"
       - key: COOKIE_SECURE

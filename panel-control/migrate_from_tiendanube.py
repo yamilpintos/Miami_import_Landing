@@ -35,6 +35,7 @@ from core import storage
 from core.config import settings
 from core.db import SessionLocal, init_db
 from core.models import Category, Product, ProductImage, Variant
+from core.sanitize import clean_description
 
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parent
@@ -178,7 +179,10 @@ def upsert_product(db, p: dict, cat_map: dict[int, Category], download_images: b
 
     prod.name = es(p.get("name")) or f"producto-{tn_id}"
     prod.handle = es(p.get("handle")) or f"producto-{tn_id}"
-    prod.description = es(p.get("description"))
+    # La descripción de TN es HTML y se renderiza con `| safe` en la tienda:
+    # se sanitiza con allow-list para no persistir <script> ejecutable en el
+    # dominio donde vive el checkout de Stripe.
+    prod.description = clean_description(es(p.get("description")))
     prod.brand = p.get("brand")
     prod.published = bool(p.get("published", True))
     prod.free_shipping = bool(p.get("free_shipping", False))

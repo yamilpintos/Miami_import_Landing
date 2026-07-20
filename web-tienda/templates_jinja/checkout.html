@@ -81,10 +81,10 @@
 
 {% block scripts %}
 {% if stripe_enabled and cart['items'] %}
-<script>
+<script nonce="{{ csp_nonce }}">
   const form=document.getElementById('form-checkout');
   const msg=form.querySelector('.mi-form-msg');
-  let stripe, elements, clientSecret, orderNumber;
+  let stripe, elements, clientSecret, orderNumber, orderToken;
 
   form.addEventListener('submit', async (e)=>{
     e.preventDefault(); msg.textContent='';
@@ -94,7 +94,7 @@
     try{
       const r=await fetch('/api/checkout/create-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const data=await r.json(); if(!r.ok) throw new Error(data.detail||'Error');
-      clientSecret=data.client_secret; orderNumber=data.order_number;
+      clientSecret=data.client_secret; orderNumber=data.order_number; orderToken=data.order_token;
       stripe=Stripe(data.publishable_key);
       elements=stripe.elements({clientSecret});
       elements.create('payment').mount('#payment-element');
@@ -107,7 +107,9 @@
     const pay=document.getElementById('btn-pay'); pay.disabled=true; pay.textContent='Procesando…'; msg.textContent='';
     const {error}=await stripe.confirmPayment({
       elements,
-      confirmParams:{ return_url: window.location.origin + '/pedido/' + orderNumber },
+      // El token opaco es lo que autoriza a ver la confirmación sin sesión.
+      confirmParams:{ return_url: window.location.origin + '/pedido/' + orderNumber
+                                  + '?t=' + encodeURIComponent(orderToken || '') },
     });
     if(error){ msg.textContent=error.message; pay.disabled=false; pay.textContent='Pagar ahora'; }
   });

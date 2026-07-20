@@ -89,7 +89,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
   // Selección de talle
   let selectedVid = null;
   const talles = document.querySelectorAll('.mi-talle');

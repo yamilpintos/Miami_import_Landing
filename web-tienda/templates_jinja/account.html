@@ -82,7 +82,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
   document.getElementById('mi-logout').addEventListener('click',async()=>{
     await fetch('/api/account/logout',{method:'POST'}); window.location.href='/';
   });

@@ -7,6 +7,14 @@ let PRODUCTS_CACHE = [];
 const $ = sel => document.querySelector(sel);
 const $$ = sel => document.querySelectorAll(sel);
 
+// Escapado obligatorio para TODO dato que venga de la API y se inserte con
+// innerHTML. Los pedidos los crea cualquiera desde el checkout publico (nombre,
+// email), asi que sin esto un `<img onerror=...>` en el nombre del comprador
+// ejecuta JS con la sesion del admin apenas se abre la pestana Pedidos.
+// Regla: si el valor no lo escribiste vos en este archivo, va con esc().
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 function toast(msg, type = '') {
   const t = $('#toast');
   t.textContent = msg;
@@ -74,7 +82,7 @@ async function loadDashboard() {
     if (s.top_vendidos && s.top_vendidos.length) {
       topEl.innerHTML = s.top_vendidos.map((t, i) => `
         <li>
-          <span><b>${i + 1}.</b> ${t.name || '—'}</span>
+          <span><b>${i + 1}.</b> ${esc(t.name || '—')}</span>
           <span class="qty">${t.vendidos} ${t.vendidos === 1 ? 'unidad' : 'unidades'}</span>
         </li>
       `).join('');
@@ -87,7 +95,7 @@ async function loadDashboard() {
     if (s.stock_bajo && s.stock_bajo.length) {
       stockEl.innerHTML = s.stock_bajo.slice(0, 12).map(p => `
         <li>
-          <span>${p.name || '—'} <small style="color:var(--ink-mute)">· ${p.brand || ''}</small></span>
+          <span>${esc(p.name || '—')} <small style="color:var(--ink-mute)">· ${esc(p.brand || '')}</small></span>
           <span class="alert">${p.stock} unid.</span>
         </li>
       `).join('');
@@ -110,7 +118,7 @@ async function loadProducts() {
     PRODUCTS_CACHE = prods;
     renderProducts(prods);
   } catch (e) {
-    grid.innerHTML = '<div class="loading">Error: ' + e.message + '</div>';
+    grid.innerHTML = '<div class="loading">Error: ' + esc(e.message) + '</div>';
   }
 }
 
@@ -130,13 +138,13 @@ function renderProducts(prods) {
     if (stock === 0) stockClass = 'empty';
     else if (stock <= 2) stockClass = 'low';
     return `
-      <div class="product-card" onclick="openProduct(${p.id})">
+      <div class="product-card" data-product-id="${Number(p.id)}">
         <div class="img">
-          ${img ? `<img src="${img}" alt="${nm}" loading="lazy">` : '<div class="no-img">Sin imagen</div>'}
+          ${img ? `<img src="${esc(img)}" alt="${esc(nm)}" loading="lazy">` : '<div class="no-img">Sin imagen</div>'}
         </div>
         <div class="meta">
-          <div class="brand">${brand}</div>
-          <div class="name">${nm}</div>
+          <div class="brand">${esc(brand)}</div>
+          <div class="name">${esc(nm)}</div>
           <div class="footline">
             <span class="price">${minPrice !== Infinity ? fmtMoney(minPrice) : '—'}</span>
             <span class="stock-pill ${stockClass}">${stock} ud.</span>
@@ -166,7 +174,7 @@ async function openProduct(pid) {
     const p = await api(`/api/products/${pid}`);
     renderProductModal(p);
   } catch (e) {
-    $('#modal-body').innerHTML = 'Error: ' + e.message;
+    $('#modal-body').innerHTML = 'Error: ' + esc(e.message);
   }
 }
 
@@ -180,33 +188,38 @@ function renderProductModal(p) {
     const vals = v.values || [];
     const talle = vals[0]?.es || vals[0]?.value || 'Único';
     return `
-      <div class="modal-row" data-vid="${v.id}">
-        <span class="talle">${talle}</span>
-        <span class="sku">${v.sku || ''}</span>
+      <div class="modal-row" data-vid="${Number(v.id)}">
+        <span class="talle">${esc(talle)}</span>
+        <span class="sku">${esc(v.sku || '')}</span>
         <span style="flex:1"></span>
-        <button class="btn-stock" onclick="adjustStock(${p.id}, ${v.id}, -1)">−</button>
-        <input class="stock-input" type="number" min="0" value="${v.stock || 0}" data-stock-input/>
-        <button class="btn-stock" onclick="adjustStock(${p.id}, ${v.id}, 1)">+</button>
+        <button class="btn-stock" data-adjust="-1" data-pid="${Number(p.id)}" data-vid="${Number(v.id)}">−</button>
+        <input class="stock-input" type="number" min="0" value="${Number(v.stock) || 0}" data-stock-input/>
+        <button class="btn-stock" data-adjust="1" data-pid="${Number(p.id)}" data-vid="${Number(v.id)}">+</button>
         <span style="font-weight:600; min-width:80px; text-align:right">${fmtMoney(v.price)}</span>
       </div>
     `;
   }).join('');
 
   $('#modal-body').innerHTML = `
-    <div class="modal-brand">${p.brand || '—'}</div>
-    <h2>${nm}</h2>
-    <p style="color:var(--ink-mute); font-size:13px"><a href="${url}" target="_blank">${url} ↗</a></p>
-    ${img ? `<img class="modal-img" src="${img}" alt="${nm}">` : ''}
+    <div class="modal-brand">${esc(p.brand || '—')}</div>
+    <h2>${esc(nm)}</h2>
+    <p style="color:var(--ink-mute); font-size:13px"><a href="${esc(url)}" target="_blank">${esc(url)} ↗</a></p>
+    ${img ? `<img class="modal-img" src="${esc(img)}" alt="${esc(nm)}">` : ''}
 
     <h2 style="margin-top:20px; font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-mute)">Variantes y stock</h2>
     ${variants}
 
     <div class="modal-actions">
-      <button class="btn-primary" onclick="saveAllStock(${p.id})">Guardar cambios de stock</button>
-      <button class="btn-ghost" onclick="window.open('${url}', '_blank')">Ver en tienda ↗</button>
-      <button class="btn-danger" onclick="deleteProduct(${p.id})" style="margin-left:auto">Eliminar producto</button>
+      <button class="btn-primary" data-save-stock="${Number(p.id)}">Guardar cambios de stock</button>
+      <button class="btn-ghost" data-open-url="${esc(url)}">Ver en tienda ↗</button>
+      <button class="btn-danger" data-delete-product="${Number(p.id)}" style="margin-left:auto">Eliminar producto</button>
     </div>
   `;
+
+  // La URL se abre desde un data-attribute: interpolarla dentro de un
+  // onclick permitiria cerrar la string y ejecutar JS arbitrario.
+  $('#modal-body').querySelector('[data-open-url]')
+    ?.addEventListener('click', ev => window.open(ev.currentTarget.dataset.openUrl, '_blank'));
 }
 
 async function adjustStock(pid, vid, delta) {
@@ -286,10 +299,10 @@ $('#form-nuevo').addEventListener('submit', async e => {
     result.classList.remove('error');
     result.innerHTML = `
       <b>✓ Producto creado</b><br>
-      ID interno: ${data.product_id}<br>
-      Variantes creadas: ${data.variantes_creadas}<br>
-      Imágenes subidas: ${data.imagenes_subidas}<br>
-      <a href="${data.url}" target="_blank">Ver en la tienda ↗</a>
+      ID interno: ${esc(data.product_id)}<br>
+      Variantes creadas: ${esc(data.variantes_creadas)}<br>
+      Imágenes subidas: ${esc(data.imagenes_subidas)}<br>
+      <a href="${esc(data.url)}" target="_blank">Ver en la tienda ↗</a>
     `;
     status.textContent = '';
     form.reset();
@@ -298,7 +311,7 @@ $('#form-nuevo').addEventListener('submit', async e => {
   } catch (e) {
     result.classList.remove('hidden');
     result.classList.add('error');
-    result.innerHTML = `<b>Error al crear:</b> ${e.message}`;
+    result.innerHTML = `<b>Error al crear:</b> ${esc(e.message)}`;
     status.textContent = '';
     toast('Error: ' + e.message, 'error');
   } finally {
@@ -327,18 +340,18 @@ async function loadOrders() {
       const orderNum = o.number || o.id;
       // Botón WhatsApp con template "coordinar_caba" pre-cargado
       const waBtn = phone
-        ? `<button class="btn-ghost wa-btn" data-phone="${phone}" data-order="${orderNum}" data-name="${customer.replace(/"/g, '&quot;')}" title="Abrir WhatsApp con plantilla">💬 WhatsApp</button>`
+        ? `<button class="btn-ghost wa-btn" data-phone="${esc(phone)}" data-order="${esc(orderNum)}" data-name="${esc(customer)}" title="Abrir WhatsApp con plantilla">💬 WhatsApp</button>`
         : `<span style="color:#888;font-size:11px;">sin tel</span>`;
       return `
         <div class="order-row">
-          <div class="num">#${orderNum}</div>
+          <div class="num">#${esc(orderNum)}</div>
           <div class="customer">
-            ${customer}
-            <small>${email}</small>
+            ${esc(customer)}
+            <small>${esc(email)}</small>
           </div>
-          <div>${fecha}</div>
+          <div>${esc(fecha)}</div>
           <div class="total">${fmtMoney(o.total)}</div>
-          <div class="status"><span class="status-badge ${badge}">${status}</span></div>
+          <div class="status"><span class="status-badge ${esc(badge)}">${esc(status)}</span></div>
           <div class="wa-cell">${waBtn}</div>
         </div>
       `;
@@ -353,7 +366,7 @@ async function loadOrders() {
       }));
     });
   } catch (e) {
-    list.innerHTML = '<div class="loading">Error: ' + e.message + '</div>';
+    list.innerHTML = '<div class="loading">Error: ' + esc(e.message) + '</div>';
   }
 }
 
@@ -415,12 +428,12 @@ async function loadUsdPrices() {
             const usd = prices[pid] || '';
             const arsCalc = usd ? fmtMoney(Number(usd) * rate) : '—';
             return `<tr style="border-bottom:1px solid #1f1f1f;">
-              <td style="padding:8px 4px;">${nm}</td>
-              <td style="padding:8px 4px;color:#888;font-size:13px;">${p.brand || '—'}</td>
+              <td style="padding:8px 4px;">${esc(nm)}</td>
+              <td style="padding:8px 4px;color:#888;font-size:13px;">${esc(p.brand || '—')}</td>
               <td style="padding:8px 4px;text-align:right;">
-                <input type="number" step="0.01" data-pid="${pid}" value="${usd}" style="width:90px;text-align:right;" class="usd-input"/>
+                <input type="number" step="0.01" data-pid="${esc(pid)}" value="${esc(usd)}" style="width:90px;text-align:right;" class="usd-input"/>
               </td>
-              <td style="padding:8px 4px;text-align:right;color:#888;" data-ars="${pid}">${arsCalc}</td>
+              <td style="padding:8px 4px;text-align:right;color:#888;" data-ars="${esc(pid)}">${esc(arsCalc)}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -437,7 +450,7 @@ async function loadUsdPrices() {
       });
     });
   } catch (e) {
-    $('#usd-prices-list').innerHTML = '<div class="loading">Error: ' + e.message + '</div>';
+    $('#usd-prices-list').innerHTML = '<div class="loading">Error: ' + esc(e.message) + '</div>';
   }
 }
 
@@ -512,13 +525,13 @@ async function loadWaTemplates() {
     cnt.innerHTML = Object.entries(WA_TEMPLATES_CACHE).map(([key, val]) => `
       <div class="form-card">
         <label>
-          <b>${WA_LABELS[key] || key}</b>
-          <textarea data-wa-key="${key}" rows="5">${val}</textarea>
+          <b>${esc(WA_LABELS[key] || key)}</b>
+          <textarea data-wa-key="${esc(key)}" rows="5">${esc(val)}</textarea>
         </label>
       </div>
     `).join('');
   } catch (e) {
-    $('#wa-templates-container').innerHTML = '<div class="loading">Error: ' + e.message + '</div>';
+    $('#wa-templates-container').innerHTML = '<div class="loading">Error: ' + esc(e.message) + '</div>';
   }
 }
 
@@ -568,22 +581,22 @@ async function loadLegalPages() {
     if (!r.available) {
       cnt.innerHTML = `<div class="panel" style="border-color:rgba(220,143,56,0.5);">
         <p><b>⚠️ No encuentro la carpeta de páginas legales.</b></p>
-        <p>Esperaba: <code style="font-size:11px;">${r.dir}</code></p>
+        <p>Esperaba: <code style="font-size:11px;">${esc(r.dir)}</code></p>
         <p>Setea la env var <code>LEGAL_PAGES_DIR</code> en el <code>.env</code> apuntando a tu carpeta <code>PEGAR_EN_ADMIN/6-paginas_legales/</code>.</p>
       </div>`;
       return;
     }
     if (!r.pages.length) {
-      cnt.innerHTML = '<div class="loading">No hay HTMLs en ' + r.dir + '</div>';
+      cnt.innerHTML = '<div class="loading">No hay HTMLs en ' + esc(r.dir) + '</div>';
       return;
     }
     cnt.innerHTML = r.pages.map(p => `
       <div class="form-card" style="display:flex;justify-content:space-between;align-items:center;">
         <div>
-          <b>/${p.name}</b>
-          <small style="display:block;color:#888;">${p.filename} · ${(p.size/1024).toFixed(1)} KB</small>
+          <b>/${esc(p.name)}</b>
+          <small style="display:block;color:#888;">${esc(p.filename)} · ${(Number(p.size)/1024).toFixed(1)} KB</small>
         </div>
-        <button class="btn-secondary" data-legal-name="${p.name}">Ver y copiar</button>
+        <button class="btn-secondary" data-legal-name="${esc(p.name)}">Ver y copiar</button>
       </div>
     `).join('');
     cnt.querySelectorAll('[data-legal-name]').forEach(btn => {
@@ -596,7 +609,7 @@ async function loadLegalPages() {
       });
     });
   } catch (e) {
-    $('#legal-pages-list').innerHTML = '<div class="loading">Error: ' + e.message + '</div>';
+    $('#legal-pages-list').innerHTML = '<div class="loading">Error: ' + esc(e.message) + '</div>';
   }
 }
 
@@ -676,3 +689,22 @@ $('#btn-logout')?.addEventListener('click', async () => {
 
 // ============ Init ============
 loadDashboard();
+
+// ============ Delegacion de eventos ============
+// Los handlers no van inline (onclick="...") porque eso obliga a permitir
+// 'unsafe-inline' en script-src, lo que anula la CSP como defensa contra XSS.
+// Se delega desde document: funciona igual para el HTML que se genera despues.
+document.addEventListener('click', ev => {
+  const card = ev.target.closest('[data-product-id]');
+  if (card) return openProduct(Number(card.dataset.productId));
+
+  const adj = ev.target.closest('[data-adjust]');
+  if (adj) return adjustStock(Number(adj.dataset.pid), Number(adj.dataset.vid),
+                              Number(adj.dataset.adjust));
+
+  const save = ev.target.closest('[data-save-stock]');
+  if (save) return saveAllStock(Number(save.dataset.saveStock));
+
+  const del = ev.target.closest('[data-delete-product]');
+  if (del) return deleteProduct(Number(del.dataset.deleteProduct));
+});

@@ -20,7 +20,7 @@
 </style>
 {% endblock %}
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
   const f=document.getElementById('form-reset');
   f.addEventListener('submit',async e=>{
     e.preventDefault(); const msg=f.querySelector('.mi-form-msg'); msg.className='mi-form-msg';

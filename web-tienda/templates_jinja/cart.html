@@ -54,7 +54,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
   function money(n){return '$ ' + Math.round(n).toLocaleString('es-AR');}
   async function cartApi(path, body){
     const r = await fetch('/api/cart'+path, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});

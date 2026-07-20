@@ -54,6 +54,12 @@ _ADDED_COLUMNS = {
         "role": "VARCHAR(20) DEFAULT 'customer'",
         "totp_secret": "VARCHAR(64)",
         "totp_enabled": "BOOLEAN DEFAULT FALSE",
+        "token_version": "INTEGER DEFAULT 0",
+    },
+    "orders": {
+        "public_token": "VARCHAR(64)",
+        "cart_id": "INTEGER",
+        "stock_reserved": "BOOLEAN DEFAULT FALSE",
     },
 }
 
@@ -71,3 +77,27 @@ def _ensure_columns() -> None:
             for col, ddl in cols.items():
                 if col not in have:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+    _backfill_order_tokens()
+
+
+def _backfill_order_tokens() -> None:
+    """Las órdenes creadas antes de public_token quedarían con NULL y serían
+    accesibles por enumeración. Se les asigna un token aleatorio de una vez."""
+    import secrets
+
+    from sqlalchemy import inspect, text
+
+    insp = inspect(engine)
+    if "orders" not in set(insp.get_table_names()):
+        return
+    if "public_token" not in {c["name"] for c in insp.get_columns("orders")}:
+        return
+    with engine.begin() as conn:
+        pending = conn.execute(
+            text("SELECT id FROM orders WHERE public_token IS NULL OR public_token = ''")
+        ).fetchall()
+        for (oid,) in pending:
+            conn.execute(
+                text("UPDATE orders SET public_token = :t WHERE id = :i"),
+                {"t": secrets.token_urlsafe(32), "i": oid},
+            )

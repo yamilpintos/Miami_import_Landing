@@ -16,6 +16,7 @@ bcrypt>=4.1                # solo para verificar hashes viejos (legacy)
 PyJWT>=2.8
 pyotp>=2.9                 # MFA/TOTP para administradores
 email-validator>=2.1
+bleach>=6.1                # sanitizar HTML de descripciones (anti-XSS almacenado)
 
 # --- Pagos ---
 stripe>=8.0

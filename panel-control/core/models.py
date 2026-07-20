@@ -9,6 +9,7 @@ Convenciones:
 """
 from __future__ import annotations
 
+import secrets
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -61,6 +62,11 @@ class User(Base):
     # MFA / TOTP (obligatorio para administradores)
     totp_secret: Mapped[str | None] = mapped_column(String(64))
     totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Versión de sesión: va como claim `tv` en el JWT y se compara al validar.
+    # Incrementarla invalida TODAS las sesiones vivas del usuario (cambio de
+    # contraseña, reset, "cerrar sesión en todos lados"). Sin esto un token
+    # robado sigue sirviendo hasta su exp aunque la víctima cambie la clave.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -281,7 +287,14 @@ class Order(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     number: Mapped[int] = mapped_column(Integer, unique=True, index=True)
+    # Token opaco para ver la confirmación sin estar logueado. El `number` es
+    # secuencial y adivinable: sin esto, /pedido/{n} deja enumerar las ventas.
+    public_token: Mapped[str] = mapped_column(String(64), unique=True, index=True,
+                                              default=lambda: secrets.token_urlsafe(32))
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    # Carrito exacto que originó la orden: al acreditarse el pago se vacía ESE,
+    # también para compras de invitado (si no, el invitado vuelve y repaga).
+    cart_id: Mapped[int | None] = mapped_column(ForeignKey("carts.id", ondelete="SET NULL"))
     email: Mapped[str | None] = mapped_column(String(255), index=True)
     contact_name: Mapped[str | None] = mapped_column(String(255))
     contact_phone: Mapped[str | None] = mapped_column(String(50))
@@ -294,6 +307,11 @@ class Order(Base):
     shipping_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     discount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+
+    # El stock se descuenta al CREAR el intent (reserva), no al acreditarse el
+    # pago: si no, dos clientes compran la última unidad en la ventana entre
+    # ambos momentos. Este flag hace idempotentes la reserva y la devolución.
+    stock_reserved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     coupon_id: Mapped[int | None] = mapped_column(ForeignKey("coupons.id", ondelete="SET NULL"))
     shipping_address: Mapped[dict | None] = mapped_column(JSON)  # snapshot
@@ -340,6 +358,21 @@ class Payment(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     order: Mapped["Order"] = relationship(back_populates="payments")
+
+
+class WebhookEvent(Base):
+    """Eventos de Stripe ya procesados — idempotencia real por event.id.
+
+    Stripe reintenga la entrega hasta 3 días y no garantiza el orden. Sin esta
+    tabla, la única defensa es inferir el estado de la orden, que es frágil:
+    dos entregas concurrentes del mismo evento pueden colarse a la vez.
+    El insert del `event_id` (PK única) es el que gana la carrera.
+    """
+    __tablename__ = "webhook_events"
+
+    event_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(80))
+    processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 # --------------------------------------------------------------------------- #

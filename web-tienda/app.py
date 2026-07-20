@@ -12,6 +12,7 @@ Abrir: http://localhost:8001
 """
 from __future__ import annotations
 
+import secrets
 from decimal import Decimal
 from pathlib import Path
 
@@ -22,17 +23,25 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from auth_store import account_router, current_user, oauth_router
-from cart import cart_router, cart_summary, get_or_create_cart
+from auth_store import account_router, oauth_router
+from cart import cart_router, cart_summary, get_or_create_cart, resolve_cart
 from checkout import checkout_router
 from core.config import settings
 from core.db import get_db, init_db
 from core.models import Category, Order, Product, User
 from core.web_security import install_security
+from deps import current_user
 
 HERE = Path(__file__).resolve().parent
 
-app = FastAPI(title="MIAMI_IMPORT Tienda", version="2.0")
+# Los docs de FastAPI enumeran todos los endpoints y esquemas: en producción es
+# un mapa gratis para el atacante.
+app = FastAPI(
+    title="MIAMI_IMPORT Tienda", version="2.0",
+    docs_url="/docs" if settings.DEV_MODE else None,
+    redoc_url="/redoc" if settings.DEV_MODE else None,
+    openapi_url="/openapi.json" if settings.DEV_MODE else None,
+)
 
 # Jinja busca en templates_jinja/ y también en snipplets/ (para incluir miami-styles.tpl)
 templates = Jinja2Templates(directory=[str(HERE / "templates_jinja"), str(HERE / "snipplets")])
@@ -80,6 +89,10 @@ def base_context(request: Request, db: Session, **extra) -> dict:
         "request": request,
         "nav_categories": nav_categories(db),
         "usd_rate": settings.USD_TO_ARS_RATE,
+        # Nonce de la CSP: cada <script> inline lo cita. Sin esto los scripts
+        # de las plantillas no se ejecutan (script-src ya no lleva
+        # 'unsafe-inline', que es lo que hacía inútil a la CSP frente a XSS).
+        "csp_nonce": getattr(request.state, "csp_nonce", ""),
     }
     ctx.update(extra)
     return ctx
@@ -92,8 +105,13 @@ install_security(
     app,
     csp_extra={"script-src": "https://bot-miami.onrender.com",
                "connect-src": "https://bot-miami.onrender.com"},
+    use_nonce=True,  # <script> inline de las plantillas, sin 'unsafe-inline'
+    # El webhook también se limita. La firma ya rechaza los eventos falsos, así
+    # que esto es solo contra inundación; si Stripe llegara a comerse un 429,
+    # reintenga la entrega, no se pierde el evento.
     sensitive_prefixes=("/api/account/login", "/api/account/register",
-                        "/api/account/password", "/api/checkout"),
+                        "/api/account/password", "/api/checkout",
+                        "/api/stripe/webhook"),
 )
 
 app.include_router(cart_router)
@@ -211,8 +229,9 @@ def search(request: Request, q: str = "", db: Session = Depends(get_db)):
 
 @app.get("/carrito", response_class=HTMLResponse)
 def cart_page(request: Request, db: Session = Depends(get_db),
+              user: User | None = Depends(current_user),
               mi_cart: str | None = Cookie(default=None)):
-    cart = get_or_create_cart(db, None, mi_cart, create=False)
+    cart = resolve_cart(db, None, user, mi_cart, create=False)
     return templates.TemplateResponse(
         request, "cart.html",
         base_context(request, db, cart=cart_summary(cart), template_class="cart"),
@@ -223,7 +242,9 @@ def cart_page(request: Request, db: Session = Depends(get_db),
 def checkout_page(request: Request, db: Session = Depends(get_db),
                   user: User | None = Depends(current_user),
                   mi_cart: str | None = Cookie(default=None)):
-    cart = get_or_create_cart(db, None, mi_cart, create=False)
+    # Misma resolución que usa create-intent: la pantalla tiene que mostrar
+    # exactamente el carrito que se va a cobrar.
+    cart = resolve_cart(db, None, user, mi_cart, create=False)
     summary = cart_summary(cart)
     return templates.TemplateResponse(
         request, "checkout.html",
@@ -235,10 +256,26 @@ def checkout_page(request: Request, db: Session = Depends(get_db),
 
 
 @app.get("/pedido/{number}", response_class=HTMLResponse)
-def order_confirmation(number: int, request: Request, db: Session = Depends(get_db)):
+def order_confirmation(number: int, request: Request, t: str = "",
+                       db: Session = Depends(get_db),
+                       user: User | None = Depends(current_user)):
+    """Confirmación de pedido.
+
+    Los números son secuenciales, así que sin control de acceso se podía
+    recorrer /pedido/1000..N y llevarse el registro completo de ventas. Se
+    exige ser el dueño (sesión) o presentar el token opaco de la orden.
+    Siempre 404 —nunca 403— para no confirmar qué números existen.
+    """
     order = db.query(Order).filter(Order.number == number).one_or_none()
     if not order:
         raise HTTPException(404, "Pedido no encontrado")
+
+    is_owner = bool(user and order.user_id and order.user_id == user.id)
+    has_token = bool(t and order.public_token
+                     and secrets.compare_digest(t, order.public_token))
+    if not (is_owner or has_token):
+        raise HTTPException(404, "Pedido no encontrado")
+
     return templates.TemplateResponse(
         request, "order_confirmation.html",
         base_context(request, db, order=order, template_class="order"),

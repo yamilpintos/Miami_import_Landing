@@ -3,13 +3,14 @@ Autenticación de clientes de la tienda.
 
 - Registro / login con email + contraseña (bcrypt), sesión en cookie HttpOnly.
 - Google OAuth (flujo de código de autorización).
-- Recuperación de contraseña por token (en dev devuelve el link; en prod se envía por email).
+- Recuperación de contraseña por token (link de vida corta, enviado por email).
 - Al loguearse fusiona el carrito anónimo con el del usuario.
 """
 from __future__ import annotations
 
+import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 from email_validator import EmailNotValidError, validate_email
@@ -23,43 +24,21 @@ from core.config import settings
 from core.db import get_db
 from core.models import Address, AuditLog, Order, PasswordReset, User
 from core.security import (
-    create_access_token, decode_token, generate_opaque_token, hash_password,
-    hash_token, password_needs_rehash, refresh_expiry, verify_password,
+    generate_opaque_token, hash_password, hash_token,
+    password_needs_rehash, verify_password,
 )
 from core.web_security import clear_failures, is_locked, record_failure
+from deps import SESSION_COOKIE, current_user, require_user, set_session
 
-SESSION_COOKIE = "mi_session"
-SESSION_MINUTES = 60 * 24 * 14  # 14 días
+log = logging.getLogger("auth_store")
 
 account_router = APIRouter(prefix="/api/account", tags=["account"])
 oauth_router = APIRouter(tags=["oauth"])
 
-
-# --------------------------------------------------------------------------- #
-# Sesión
-# --------------------------------------------------------------------------- #
-def _set_session(response: Response, user: User) -> None:
-    token = create_access_token(user.id, {"cust": True}, minutes=SESSION_MINUTES)
-    response.set_cookie(
-        SESSION_COOKIE, token, httponly=True, samesite="lax",
-        secure=settings.COOKIE_SECURE, max_age=SESSION_MINUTES * 60,
-        domain=settings.COOKIE_DOMAIN, path="/",
-    )
-
-
-def current_user(db: Session = Depends(get_db),
-                 mi_session: str | None = Cookie(default=None)) -> User | None:
-    payload = decode_token(mi_session) if mi_session else None
-    if not payload or payload.get("type") != "access":
-        return None
-    user = db.get(User, int(payload["sub"])) if payload.get("sub") else None
-    return user if (user and user.is_active) else None
-
-
-def require_user(user: User | None = Depends(current_user)) -> User:
-    if not user:
-        raise HTTPException(401, "Iniciá sesión para continuar")
-    return user
+# La sesión vive en `deps` (la necesita también `cart`, que se importa acá).
+# Se re-exportan para no romper los imports existentes.
+_set_session = set_session
+SESSION_MINUTES = settings.SESSION_MINUTES
 
 
 # --------------------------------------------------------------------------- #
@@ -75,16 +54,28 @@ def register(body: dict, response: Response, request: Request,
     password = body.get("password") or ""
     if len(password) < 8:
         raise HTTPException(400, "La contraseña debe tener al menos 8 caracteres")
+
+    # No revelar si el email ya está registrado: un 409 distinguible convierte
+    # este endpoint en un oráculo para depurar listas de emails filtradas y
+    # dirigir phishing. Se responde igual que en el alta exitosa.
     if db.query(User).filter(User.email == email).first():
-        raise HTTPException(409, "Ya existe una cuenta con ese email")
+        # Pagar el mismo costo de Argon2 que el alta real: si no, la rama del
+        # email existente responde en ~2 ms y la nueva en ~100 ms, y esa
+        # diferencia de tiempo reintroduce el oráculo de enumeración que la
+        # respuesta uniforme buscaba cerrar.
+        hash_password(password)
+        db.add(AuditLog(action="register_existing_email", entity="user", entity_id=email,
+                        ip=request.client.host if request.client else None))
+        db.commit()
+        return {"ok": True, "email": email, "name": None}
 
     user = User(email=email, password_hash=hash_password(password),
-                full_name=(body.get("full_name") or "").strip() or None,
-                phone=(body.get("phone") or "").strip() or None)
+                full_name=(body.get("full_name") or "").strip()[:255] or None,
+                phone=(body.get("phone") or "").strip()[:50] or None)
     db.add(user)
     db.commit()
     db.refresh(user)
-    merge_anonymous_cart_into_user(db, user.id, mi_cart)
+    merge_anonymous_cart_into_user(db, user.id, mi_cart, response)
     _set_session(response, user)
     db.add(AuditLog(user_id=user.id, action="register", entity="user", entity_id=str(user.id),
                     ip=request.client.host if request.client else None))
@@ -114,7 +105,7 @@ def login(body: dict, response: Response, request: Request,
     if password_needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
         db.commit()
-    merge_anonymous_cart_into_user(db, user.id, mi_cart)
+    merge_anonymous_cart_into_user(db, user.id, mi_cart, response)
     _set_session(response, user)
     db.add(AuditLog(user_id=user.id, action="login", entity="user", entity_id=str(user.id),
                     ip=request.client.host if request.client else None))
@@ -211,15 +202,23 @@ def password_forgot(body: dict, db: Session = Depends(get_db)):
     # Respondemos siempre OK (no revelar si el email existe).
     if not user:
         return {"ok": True}
+    # Un reset nuevo invalida los anteriores: si no, cada pedido deja otro link
+    # vivo y basta con que se filtre uno solo, de cualquier momento.
+    (db.query(PasswordReset)
+       .filter(PasswordReset.user_id == user.id, PasswordReset.used.is_(False))
+       .update({"used": True}, synchronize_session=False))
+
     raw = generate_opaque_token()
-    db.add(PasswordReset(user_id=user.id, token_hash=hash_token(raw), expires_at=refresh_expiry()))
+    # Ventana corta y propia (antes reusaba refresh_expiry() = 30 DÍAS). Un link
+    # de recuperación que sobrevive un mes en la casilla es una llave olvidada.
+    expires = datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_MINUTES)
+    db.add(PasswordReset(user_id=user.id, token_hash=hash_token(raw), expires_at=expires))
     db.commit()
     link = f"{settings.STORE_BASE_URL}/cuenta/reset?token={raw}"
-    # En producción esto se envía por email (SMTP). En dev lo devolvemos para poder probar.
-    if settings.DEV_MODE:
-        return {"ok": True, "dev_reset_link": link}
-    # TODO: enviar `link` por email cuando haya SMTP configurado.
-    print(f"[password-reset] link para {email}: {link}")
+    # En producción esto se envía por email (SMTP). En dev se muestra por consola.
+    # NUNCA se devuelve en el body: si DEV_MODE quedara mal seteado en un
+    # deploy, cualquiera pediría el reset del admin y recibiría el token.
+    log.info("[password-reset] link para %s: %s", email, link)
     return {"ok": True}
 
 
@@ -233,8 +232,16 @@ def password_reset(body: dict, db: Session = Depends(get_db)):
     if not pr or pr.used or pr.expires_at < datetime.now(timezone.utc):
         raise HTTPException(400, "Token inválido o expirado")
     user = db.get(User, pr.user_id)
+    if not user:
+        raise HTTPException(400, "Token inválido o expirado")
     user.password_hash = hash_password(password)
+    # Cerrar TODAS las sesiones vivas: si alguien había robado la cuenta, sin
+    # esto conserva su cookie válida hasta que expire, aunque la víctima ya
+    # haya cambiado la contraseña.
+    user.token_version = (user.token_version or 0) + 1
     pr.used = True
+    db.add(AuditLog(user_id=user.id, action="password_reset", entity="user",
+                    entity_id=str(user.id)))
     db.commit()
     return {"ok": True}
 
@@ -297,15 +304,29 @@ def google_callback(request: Request, code: str = "", state: str = "",
     if not google_id or not email:
         raise HTTPException(502, "Google no devolvió email")
 
+    email_verified = bool(info.get("email_verified"))
+
     user = db.query(User).filter(User.google_id == google_id).one_or_none()
     if not user:
         user = db.query(User).filter(User.email == email).one_or_none()
         if user:
-            user.google_id = google_id  # vincular cuenta existente
+            # Vincular una cuenta existente por email SOLO si Google confirma
+            # que verificó ese email. Sin este chequeo, quien controle un
+            # tenant de Workspace puede declarar el email de una víctima y
+            # quedarse con su cuenta sin saber la contraseña.
+            if not email_verified:
+                raise HTTPException(403, "Google no verificó ese email")
+            user.google_id = google_id
+            user.email_verified = True
         else:
-            user = User(email=email, google_id=google_id, full_name=info.get("name"),
-                        email_verified=bool(info.get("email_verified")))
+            if not email_verified:
+                raise HTTPException(403, "Google no verificó ese email")
+            user = User(email=email, google_id=google_id,
+                        full_name=(info.get("name") or "")[:255] or None,
+                        email_verified=True)
             db.add(user)
+    if not user.is_active:
+        raise HTTPException(403, "Cuenta inactiva")
     db.commit()
     db.refresh(user)
     merge_anonymous_cart_into_user(db, user.id, mi_cart)

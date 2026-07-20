@@ -6,6 +6,7 @@ forma de respuesta (ver serializers.py) para que el frontend siga funcionando.
 """
 from __future__ import annotations
 
+import html
 import io
 import re
 import secrets
@@ -205,10 +206,15 @@ async def create_product(
         precio_ars = precio_num.quantize(Decimal("0.01"))
         usd_val = (precio_ars / rate).quantize(Decimal("0.01")) if rate else None
 
-    desc = f"<p>{name}</p>"
+    # La descripción se renderiza con `| safe` en la tienda, así que el HTML
+    # que se guarda tiene que ser SOLO el que armamos acá: los valores del
+    # formulario van escapados. Sin esto, un `<script>` guardado desde el panel
+    # queda persistente en el dominio donde vive el checkout de Stripe.
+    desc = f"<p>{html.escape(name)}</p>"
     if brand:
-        desc += f"<p>Marca: {brand}</p>"
-    desc += f"<p>{description}</p>" if description else "<p>Producto original importado.</p>"
+        desc += f"<p>Marca: {html.escape(brand)}</p>"
+    desc += (f"<p>{html.escape(description)}</p>" if description
+             else "<p>Producto original importado.</p>")
 
     prod = Product(name=name, handle=handle, description=desc, brand=brand, published=publicado)
     db.add(prod)

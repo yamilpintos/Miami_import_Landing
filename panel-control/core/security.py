@@ -23,6 +23,12 @@ from .config import settings
 _ph = PasswordHasher(time_cost=3, memory_cost=64 * 1024, parallelism=2,
                      hash_len=32, salt_len=16)
 
+# Hash señuelo: se verifica contra él cuando el usuario no existe / no tiene
+# contraseña, para que el login pague SIEMPRE el costo de Argon2. Sin esto, un
+# email inexistente responde en ~1 ms y uno real en ~100 ms, y esa diferencia
+# de tiempo permite enumerar cuentas.
+_DECOY_HASH = _ph.hash("decoy-password-para-timing-constante")
+
 
 def hash_password(plain: str) -> str:
     return _ph.hash(plain)
@@ -30,6 +36,11 @@ def hash_password(plain: str) -> str:
 
 def verify_password(plain: str, hashed: str | None) -> bool:
     if not hashed:
+        # Igualar el tiempo con una verificación real contra el señuelo.
+        try:
+            _ph.verify(_DECOY_HASH, plain)
+        except (VerifyMismatchError, InvalidHashError):
+            pass
         return False
     # Hashes nuevos: Argon2 ($argon2id$...). Viejos: bcrypt ($2a/$2b/$2y$).
     if hashed.startswith("$argon2"):

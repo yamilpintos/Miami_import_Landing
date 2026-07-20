@@ -47,7 +47,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
   const tabs=document.querySelectorAll('.mi-tab'), fl=document.getElementById('form-login'), fr=document.getElementById('form-register');
   tabs.forEach(t=>t.addEventListener('click',()=>{
     tabs.forEach(x=>{x.style.color='rgba(245,243,238,.5)';x.style.borderBottomColor='transparent';});

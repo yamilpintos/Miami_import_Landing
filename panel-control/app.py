@@ -20,15 +20,14 @@ from pathlib import Path
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from auth import auth_router, ensure_admin
+from auth import auth_router, ensure_admin, get_current_admin, is_admin_request
 from core.config import settings
 from core.db import init_db
-from core.security import decode_token
 from core.web_security import install_security
 from panel_api import router as panel_router
 
@@ -47,7 +46,12 @@ except Exception as e:  # noqa: BLE001
 # --------------------------------------------------------------------------- #
 # App
 # --------------------------------------------------------------------------- #
-app = FastAPI(title="Stock Manager Miami Import", version="2.0")
+app = FastAPI(
+    title="Stock Manager Miami Import", version="2.0",
+    docs_url="/docs" if settings.DEV_MODE else None,
+    redoc_url="/redoc" if settings.DEV_MODE else None,
+    openapi_url="/openapi.json" if settings.DEV_MODE else None,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -59,6 +63,11 @@ app.add_middleware(
 
 
 install_security(app, sensitive_prefixes=("/api/auth/login",), rate_limit=20)
+
+# Todas las utilidades locales cuelgan de acá: la dependencia de admin se
+# aplica a nivel de router. Declarar rutas /api sueltas sobre `app` las dejaba
+# SIN autenticación (así quedaron expuestos bot_config, redeploy_bot y demás).
+admin_api = APIRouter(prefix="/api", dependencies=[Depends(get_current_admin)])
 
 
 @app.on_event("startup")
@@ -72,9 +81,13 @@ app.include_router(panel_router)
 
 
 def _is_authed(request: Request) -> bool:
-    token = request.cookies.get("mi_admin")
-    payload = decode_token(token) if token else None
-    return bool(payload and payload.get("type") == "access")
+    """¿Esta request trae una sesión de ADMIN válida?
+
+    Antes solo miraba que el JWT fuera de tipo `access`, sin verificar
+    is_admin: cualquier cliente de la tienda podía pegar su token en la cookie
+    `mi_admin` y entrar a la UI del panel.
+    """
+    return is_admin_request(request)
 
 
 @app.get("/")
@@ -152,7 +165,7 @@ def save_json(path: Path, data: Any) -> None:
 
 
 # ---- WhatsApp templates ----
-@app.get("/api/whatsapp_templates")
+@admin_api.get("/whatsapp_templates")
 def wa_templates_get():
     tpls = load_json(WA_TEMPLATES_FILE, {})
     for k, v in DEFAULT_WA_TEMPLATES.items():
@@ -160,14 +173,14 @@ def wa_templates_get():
     return tpls
 
 
-@app.post("/api/whatsapp_templates")
+@admin_api.post("/whatsapp_templates")
 def wa_templates_save(body: dict):
     save_json(WA_TEMPLATES_FILE, {str(k): str(v) for k, v in (body or {}).items()})
     return {"ok": True}
 
 
 # ---- Bot config ----
-@app.get("/api/bot_config")
+@admin_api.get("/bot_config")
 def bot_config_get():
     cfg = load_json(BOT_CONFIG_FILE, {})
     cfg.setdefault("shipping_info", "")
@@ -177,7 +190,7 @@ def bot_config_get():
     return cfg
 
 
-@app.post("/api/bot_config")
+@admin_api.post("/bot_config")
 def bot_config_save(body: dict):
     cfg = load_json(BOT_CONFIG_FILE, {})
     for key in ("shipping_info", "payment_info", "exchange_info"):
@@ -193,7 +206,7 @@ def bot_config_save(body: dict):
 
 
 # ---- Páginas legales ----
-@app.get("/api/legal_pages")
+@admin_api.get("/legal_pages")
 def legal_pages_list():
     if not LEGAL_PAGES_DIR.exists():
         return {"available": False, "dir": str(LEGAL_PAGES_DIR), "pages": []}
@@ -202,7 +215,7 @@ def legal_pages_list():
     return {"available": True, "dir": str(LEGAL_PAGES_DIR), "pages": pages}
 
 
-@app.get("/api/legal_pages/{name}")
+@admin_api.get("/legal_pages/{name}")
 def legal_page_get(name: str):
     import re
     safe = re.sub(r"[^a-z0-9_-]", "", name.lower())
@@ -215,7 +228,7 @@ def legal_page_get(name: str):
 
 
 # ---- Backup status ----
-@app.get("/api/backup/status")
+@admin_api.get("/backup/status")
 def backup_status():
     if not _HAS_DRIVE:
         return {"enabled": False, "reason": "drive_helper no disponible"}
@@ -223,7 +236,7 @@ def backup_status():
 
 
 # ---- Acciones rápidas ----
-@app.post("/api/actions/redeploy_bot")
+@admin_api.post("/actions/redeploy_bot")
 def action_redeploy_bot():
     import requests
     hook = os.environ.get("RENDER_DEPLOY_HOOK", "")
@@ -239,12 +252,14 @@ def action_redeploy_bot():
 # --------------------------------------------------------------------------- #
 # Estáticos
 # --------------------------------------------------------------------------- #
+app.include_router(admin_api)
+
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 
 
 if __name__ == "__main__":
     print()
-    print(" 🚀 Stock Manager Miami Import (plataforma propia)")
+    print(" >> Stock Manager Miami Import (plataforma propia)")
     print(f"    DB          : {settings.DATABASE_URL}")
     if _HAS_DRIVE:
         dst = drive_helper.status()

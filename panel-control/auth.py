@@ -30,6 +30,33 @@ auth_router = APIRouter(prefix="/api/auth", tags=["auth"])
 # --------------------------------------------------------------------------- #
 # Dependencia: admin actual
 # --------------------------------------------------------------------------- #
+def _admin_from_token(db: Session, token: str | None) -> User | None:
+    """Resuelve el admin de un token, con TODAS las verificaciones.
+
+    El claim `adm` es obligatorio: sin ese chequeo, un token de cliente de la
+    tienda (que también es `type=access`) servía como sesión de admin, y como
+    la tienda no tiene MFA, eso saltaba el TOTP por completo.
+    """
+    payload = decode_token(token) if token else None
+    if not payload or payload.get("type") != "access":
+        return None
+    if payload.get("adm") is not True:
+        return None  # token de la tienda, no del panel
+    if not payload.get("sub"):
+        return None
+    try:
+        user = db.get(User, int(payload["sub"]))
+    except (TypeError, ValueError):
+        return None
+    if not user or not user.is_admin or not user.is_active:
+        return None
+    if int(payload.get("tv", -1)) != int(user.token_version or 0):
+        return None  # sesión invalidada
+    # MFA obligatorio para el panel: un admin sin TOTP configurado solo puede
+    # llegar a los endpoints de setup (ver _MFA_SETUP_PATHS en la dependencia).
+    return user
+
+
 def get_current_admin(
     request: Request,
     db: Session = Depends(get_db),
@@ -41,13 +68,29 @@ def get_current_admin(
         auth = request.headers.get("Authorization", "")
         if auth.lower().startswith("bearer "):
             token = auth[7:]
-    payload = decode_token(token) if token else None
-    if not payload or payload.get("type") != "access":
+    user = _admin_from_token(db, token)
+    if not user:
         raise HTTPException(401, "No autenticado")
-    user = db.get(User, int(payload["sub"])) if payload.get("sub") else None
-    if not user or not user.is_admin or not user.is_active:
-        raise HTTPException(403, "Acceso denegado")
+    # Sin segundo factor configurado, la sesión solo sirve para configurarlo.
+    if not user.totp_enabled and request.url.path not in _MFA_SETUP_PATHS:
+        raise HTTPException(403, "Configurá el segundo factor (MFA) para continuar")
     return user
+
+
+# Rutas alcanzables por un admin que todavía no habilitó MFA.
+_MFA_SETUP_PATHS = {
+    "/api/auth/me", "/api/auth/logout",
+    "/api/auth/totp/setup", "/api/auth/totp/enable",
+}
+
+
+def is_admin_request(request: Request) -> bool:
+    """Versión sin dependencias de FastAPI, para las rutas HTML del panel."""
+    db = SessionLocal()
+    try:
+        return _admin_from_token(db, request.cookies.get(COOKIE_NAME)) is not None
+    finally:
+        db.close()
 
 
 # --------------------------------------------------------------------------- #
@@ -58,15 +101,20 @@ def login(body: dict, response: Response, request: Request, db: Session = Depend
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
     ip = request.client.host if request.client else "?"
+    # Dos contadores: por IP+cuenta y por CUENTA sola. Solo con el primero,
+    # rotando proxies cada IP arranca en cero y la cuenta nunca se bloquea.
     lock_key = f"admin:{email}:{ip}"
+    account_key = f"admin-account:{email}"
 
-    rem = is_locked(lock_key)
-    if rem:
-        raise HTTPException(429, f"Demasiados intentos. Reintentá en {rem // 60 + 1} min.")
+    for key in (lock_key, account_key):
+        rem = is_locked(key)
+        if rem:
+            raise HTTPException(429, f"Demasiados intentos. Reintentá en {rem // 60 + 1} min.")
 
     user = db.query(User).filter(User.email == email).one_or_none()
     if not user or not user.is_admin or not verify_password(password, user.password_hash):
         record_failure(lock_key)
+        record_failure(account_key)
         db.add(AuditLog(action="admin_login_failed", entity="user", entity_id=email, ip=ip))
         db.commit()
         raise HTTPException(401, "Email o contraseña incorrectos")
@@ -80,17 +128,24 @@ def login(body: dict, response: Response, request: Request, db: Session = Depend
             return {"ok": False, "mfa_required": True}
         if not pyotp.TOTP(user.totp_secret).verify(code, valid_window=1):
             record_failure(lock_key)
+            record_failure(account_key)  # el MFA también cuenta por cuenta
             db.add(AuditLog(user_id=user.id, action="admin_mfa_failed", entity="user",
                             entity_id=str(user.id), ip=ip))
             db.commit()
             raise HTTPException(401, "Código MFA inválido")
 
-    # Login OK: limpiar bloqueo y rehashear a Argon2 si hacía falta.
+    # Login OK: limpiar AMBOS contadores (si no, el de cuenta se queda pegado y
+    # un admin legítimo sigue viendo 429 hasta que expire la ventana).
     clear_failures(lock_key)
+    clear_failures(account_key)
     if password_needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
 
-    token = create_access_token(user.id, {"adm": True}, minutes=ADMIN_TOKEN_MINUTES)
+    token = create_access_token(
+        user.id,
+        {"adm": True, "tv": user.token_version or 0},
+        minutes=ADMIN_TOKEN_MINUTES,
+    )
     response.set_cookie(
         key=COOKIE_NAME, value=token, httponly=True, samesite="strict",
         secure=settings.COOKIE_SECURE, max_age=ADMIN_TOKEN_MINUTES * 60,
@@ -180,7 +235,7 @@ def ensure_admin() -> None:
             db.commit()
             print(f"[auth] admin asegurado: {email}")
         elif not any_admin:
-            print("[auth] ⚠ No hay admin y no se configuró ADMIN_PASSWORD. "
+            print("[auth] [!] No hay admin y no se configuró ADMIN_PASSWORD. "
                   "Seteá ADMIN_EMAIL/ADMIN_PASSWORD en .env para crear uno.")
     finally:
         db.close()

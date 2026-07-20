@@ -28,7 +28,7 @@
 </div>
 
 {% if order.payment_status != 'paid' %}
-<script>
+<script nonce="{{ csp_nonce }}">
   // Refresca para reflejar el pago acreditado vía webhook.
   let tries=0; const iv=setInterval(async()=>{ tries++; if(tries>10){clearInterval(iv);return;}
     const r=await fetch(location.pathname,{headers:{'X-Requested-With':'poll'}});

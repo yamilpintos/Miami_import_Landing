@@ -7,6 +7,7 @@ Render. Si se escala a varias instancias, migrar a Redis.
 """
 from __future__ import annotations
 
+import secrets
 import time
 from collections import defaultdict, deque
 
@@ -50,9 +51,15 @@ def clear_failures(key: str) -> None:
     _locked_until.pop(key, None)
 
 # Hosts permitidos por la tienda (CDNs de animación, Stripe, fuentes, imágenes TN, bot).
+#
+# script-src NO lleva 'unsafe-inline': con esa directiva la CSP deja de servir
+# como defensa contra XSS (un `<img onerror=...>` inyectado ejecuta igual).
+# En su lugar cada respuesta HTML trae un nonce y los <script> inline lo citan.
 _DEFAULT_CSP = {
     "default-src": "'self'",
-    "script-src": "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com https://ajax.googleapis.com",
+    "script-src": "'self' https://cdn.jsdelivr.net https://js.stripe.com https://ajax.googleapis.com",
+    # style-src sí lo conserva: los estilos inline del theme son numerosos y el
+    # riesgo de una inyección de CSS es órdenes de magnitud menor.
     "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src": "'self' data: https:",
     "font-src": "'self' https://fonts.gstatic.com data:",
@@ -61,30 +68,45 @@ _DEFAULT_CSP = {
     "frame-ancestors": "'self'",
     "base-uri": "'self'",
     "form-action": "'self'",
+    "object-src": "'none'",
 }
 
 
-def _csp_string(extra: dict | None = None) -> str:
+def _csp_string(extra: dict | None = None, nonce: str | None = None) -> str:
     policy = dict(_DEFAULT_CSP)
     if extra:
         for k, v in extra.items():
             policy[k] = f"{policy.get(k, '')} {v}".strip()
+    if nonce:
+        policy["script-src"] = f"{policy['script-src']} 'nonce-{nonce}'"
     return "; ".join(f"{k} {v}" for k, v in policy.items())
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, csp_extra: dict | None = None):
+    def __init__(self, app, csp_extra: dict | None = None, use_nonce: bool = False):
         super().__init__(app)
-        self._csp = _csp_string(csp_extra)
+        self._csp_extra = csp_extra
+        self._use_nonce = use_nonce
+        self._static_csp = None if use_nonce else _csp_string(csp_extra)
 
     async def dispatch(self, request: Request, call_next):
+        nonce = None
+        if self._use_nonce:
+            # Un nonce por respuesta; las plantillas lo leen de request.state.
+            nonce = secrets.token_urlsafe(16)
+            request.state.csp_nonce = nonce
         resp: Response = await call_next(request)
+        # Variable local, NO atributo de instancia: el middleware es único y
+        # compartido por todas las requests concurrentes.
+        csp = self._static_csp or _csp_string(self._csp_extra, nonce)
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
-        resp.headers.setdefault("X-Frame-Options", "DENY")
+        # Coherente con frame-ancestors de la CSP (los navegadores modernos
+        # priorizan la CSP; tener DENY acá y 'self' allá era contradictorio).
+        resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         resp.headers.setdefault("Permissions-Policy",
                                 "geolocation=(), microphone=(), camera=(), payment=(self)")
-        resp.headers.setdefault("Content-Security-Policy", self._csp)
+        resp.headers.setdefault("Content-Security-Policy", csp)
         resp.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         resp.headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
         # No filtrar la tecnología del stack.
@@ -95,7 +117,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         p = request.url.path
         if p.startswith(("/api/", "/auth/", "/cuenta", "/checkout")):
             resp.headers["Cache-Control"] = "no-store"
-        if settings.COOKIE_SECURE and not settings.DEV_MODE:
+        # HSTS depende solo de no estar en desarrollo: atarlo también a
+        # COOKIE_SECURE hacía que un error de config quitara las dos defensas
+        # a la vez (cookies sin Secure Y sin forzar HTTPS).
+        if not settings.DEV_MODE:
             resp.headers.setdefault(
                 "Strict-Transport-Security",
                 "max-age=63072000; includeSubDomains; preload")
@@ -131,8 +156,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 def install_security(app, *, csp_extra: dict | None = None,
                      rate_limit: int = 30, rate_window: int = 60,
+                     use_nonce: bool = False,
                      sensitive_prefixes: tuple[str, ...] = ()) -> None:
-    app.add_middleware(SecurityHeadersMiddleware, csp_extra=csp_extra)
+    app.add_middleware(SecurityHeadersMiddleware, csp_extra=csp_extra,
+                       use_nonce=use_nonce)
     if sensitive_prefixes:
         app.add_middleware(RateLimitMiddleware, limit=rate_limit, window=rate_window,
                            sensitive_prefixes=sensitive_prefixes)
