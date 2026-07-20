@@ -101,11 +101,20 @@ def base_context(request: Request, db: Session, **extra) -> dict:
 # --------------------------------------------------------------------------- #
 # Startup
 # --------------------------------------------------------------------------- #
+# CSP de la TIENDA: permite scripts/estilos inline. El tema (portado de
+# TiendaNube) tiene <script> y handlers on* inline por todos lados —el 3D, las
+# animaciones, el carrito— y sin 'unsafe-inline' el navegador los bloquea.
+# El riesgo de XSS acá está tapado en la capa correcta: el único campo con HTML
+# enriquecido (product.description) se sanitiza en el backend, así que ni con
+# inline permitido puede inyectarse un <script>. El PANEL sí queda con CSP
+# estricta (no tiene inline y es la superficie sensible).
 install_security(
     app,
-    csp_extra={"script-src": "https://bot-miami.onrender.com",
-               "connect-src": "https://bot-miami.onrender.com"},
-    use_nonce=True,  # <script> inline de las plantillas, sin 'unsafe-inline'
+    csp_extra={"script-src": "'unsafe-inline' https://bot-miami.onrender.com",
+               "style-src": "'unsafe-inline'",
+               "img-src": "https://miamiimport.com.ar",
+               "connect-src": "https://bot-miami.onrender.com https://miamiimport.com.ar"},
+    use_nonce=False,
     # El webhook también se limita. La firma ya rechaza los eventos falsos, así
     # que esto es solo contra inundación; si Stripe llegara a comerse un 429,
     # reintenga la entrega, no se pierde el evento.
