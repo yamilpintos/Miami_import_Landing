@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% from "_card.html" import product_card %}
+{% block title %}{{ product.seo_title or product.name }} — {{ STORE_NAME }}{% endblock %}
+{% block meta_description %}{{ product.seo_description or product.name }}{% endblock %}
+{% block head_extra %}
+  <meta property="og:type" content="product"/>
+  <meta property="og:title" content="{{ product.name }}"/>
+  {% if product.images %}<meta property="og:image" content="{{ product.images[0].url }}"/>{% endif %}
+{% endblock %}
+
+{% block content %}
+{% set ars = product.min_price %}
+{% set usd = product.variants[0].usd_price if product.variants and product.variants[0].usd_price else (ars / usd_rate if ars else None) %}
+<div class="mi-container" style="padding-top:48px">
+  <nav style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,243,238,.4);margin-bottom:28px">
+    <a href="/">Inicio</a>
+    {% if product.categories %} / <a href="/categoria/{{ product.categories[0].handle }}">{{ product.categories[0].name }}</a>{% endif %}
+    / <span style="color:rgba(245,243,238,.7)">{{ product.name }}</span>
+  </nav>
+
+  <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:start" class="mi-product-layout">
+    <!-- Galería -->
+    <div>
+      <div style="background:#0c0c0c;border:1px solid rgba(255,255,255,.06);border-radius:12px;overflow:hidden;aspect-ratio:3/4">
+        <img id="mi-main-img" src="{{ product.images[0].url if product.images else '/static/images/empty-placeholder.png' }}"
+             alt="{{ product.name }}" style="width:100%;height:100%;object-fit:cover"/>
+      </div>
+      {% if product.images|length > 1 %}
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        {% for img in product.images %}
+          <button type="button" onclick="document.getElementById('mi-main-img').src='{{ img.url }}'"
+            style="width:72px;height:90px;border:1px solid rgba(255,255,255,.12);border-radius:8px;overflow:hidden;background:none;cursor:pointer;padding:0">
+            <img src="{{ img.url }}" alt="" style="width:100%;height:100%;object-fit:cover"/>
+          </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Info -->
+    <div>
+      <div style="font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:var(--miami-gold,#b99b63);margin-bottom:10px">{{ product.brand }}</div>
+      <h1 style="font-size:clamp(24px,3.5vw,38px);line-height:1.15;margin:0 0 24px;font-weight:700">{{ product.name }}</h1>
+
+      <div class="miami-price-dual" style="margin-bottom:30px">
+        <span class="miami-price-usd">{{ usd | usd }}</span>
+        <span class="miami-price-ars-label">Precio en pesos</span>
+        <span class="miami-price-ars">{{ ars | ars }}</span>
+      </div>
+
+      {% set disponibles = product.variants | selectattr('stock', 'gt', 0) | list %}
+      {% if product.variants and (product.variants|length > 1 or product.variants[0].value) %}
+      <div style="margin-bottom:24px">
+        <div style="font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:rgba(245,243,238,.6);margin-bottom:12px">Talle</div>
+        <div id="mi-talles" style="display:flex;gap:10px;flex-wrap:wrap">
+          {% for v in product.variants %}
+            <button type="button" class="mi-talle" data-vid="{{ v.id }}" data-stock="{{ v.stock }}"
+              {% if v.stock == 0 %}disabled{% endif %}
+              style="min-width:52px;padding:12px 14px;border:1px solid rgba(245,243,238,.22);background:none;color:#f5f3ee;
+              border-radius:8px;cursor:pointer;letter-spacing:.05em;{% if v.stock == 0 %}opacity:.35;text-decoration:line-through;cursor:not-allowed{% endif %}">
+              {{ v.value or 'Único' }}</button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <button id="mi-add-cart" data-pid="{{ product.id }}"
+        style="width:100%;padding:18px;background:var(--miami-gold,#b99b63);color:#0a0a0a;border:0;border-radius:999px;
+        letter-spacing:.2em;text-transform:uppercase;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:14px"
+        {% if not disponibles %}disabled{% endif %}>
+        {{ 'Agregar al carrito' if disponibles else 'Sin stock' }}</button>
+
+      {% if product.description %}
+      <div style="margin-top:36px;padding-top:28px;border-top:1px solid rgba(255,255,255,.08);
+        color:rgba(245,243,238,.7);line-height:1.8;font-size:15px">
+        {{ product.description | safe }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if relacionados %}
+  <h2 class="mi-section-title">También de {{ product.brand }}</h2>
+  <div class="mi-grid">{% for p in relacionados %}{{ product_card(p, usd_rate) }}{% endfor %}</div>
+  {% endif %}
+</div>
+
+<style>@media(max-width:900px){.mi-product-layout{grid-template-columns:1fr !important}}</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Selección de talle
+  let selectedVid = null;
+  const talles = document.querySelectorAll('.mi-talle');
+  talles.forEach(function(b){
+    b.addEventListener('click', function(){
+      if (b.disabled) return;
+      talles.forEach(x=>{x.style.borderColor='rgba(245,243,238,.22)';x.style.background='none';x.style.color='#f5f3ee';});
+      b.style.borderColor='var(--miami-gold,#b99b63)';b.style.background='var(--miami-gold,#b99b63)';b.style.color='#0a0a0a';
+      selectedVid = b.dataset.vid;
+    });
+  });
+  // Si hay una sola variante, queda seleccionada por defecto
+  if (talles.length === 1 && !talles[0].disabled) selectedVid = talles[0].dataset.vid;
+  {% if product.variants|length == 1 %}selectedVid = "{{ product.variants[0].id }}";{% endif %}
+
+  // Agregar al carrito
+  const addBtn = document.getElementById('mi-add-cart');
+  if (addBtn) addBtn.addEventListener('click', async function(){
+    if (addBtn.disabled) return;
+    if (!selectedVid){ addBtn.textContent='Elegí un talle'; setTimeout(()=>addBtn.textContent='Agregar al carrito',1600); return; }
+    const original = addBtn.textContent;
+    addBtn.textContent = 'Agregando…'; addBtn.disabled = true;
+    try{
+      const r = await fetch('/api/cart/add',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({variant_id:selectedVid,quantity:1})});
+      const data = await r.json();
+      if(!r.ok) throw new Error(data.detail||'Error');
+      const badge=document.querySelector('[data-cart-count]'); if(badge) badge.textContent=data.count;
+      addBtn.textContent='✓ Agregado al carrito';
+      setTimeout(()=>{addBtn.textContent=original;addBtn.disabled=false;},1800);
+    }catch(e){ addBtn.textContent=e.message; setTimeout(()=>{addBtn.textContent=original;addBtn.disabled=false;},1800); }
+  });
+</script>
+{% endblock %}

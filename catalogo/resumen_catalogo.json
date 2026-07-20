@@ -1,0 +1,28 @@
+{
+  "rastreado_en": "2026-06-03T23:38:40.339147+00:00",
+  "store_id": "7575582",
+  "total_productos": 158,
+  "publicados": 158,
+  "no_publicados": 0,
+  "total_variantes": 366,
+  "total_imagenes": 189,
+  "stock_total_unidades": 311,
+  "total_categorias": 75,
+  "productos_por_marca": {
+    "Diesel": 72,
+    "Emporio Armani": 23,
+    "Off white": 17,
+    "Hugo Boss": 10,
+    "Balenciaga": 8,
+    "Calvin Klein": 6,
+    "Balmain": 5,
+    "Palm Angels": 5,
+    "Michael Kors": 4,
+    "Supreme": 3,
+    "Amiri": 2,
+    "Givenchy": 1,
+    "Louis Vuitton": 1,
+    "Prada": 1
+  },
+  "productos_sin_precio": []
+}

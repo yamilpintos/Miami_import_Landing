@@ -1,0 +1,43 @@
+# ==========================================================================
+# .gitignore RAÍZ del monorepo (web-tienda + panel-control)
+# Las subcarpetas tienen su propio .gitignore; esto cubre la raíz y refuerza
+# lo crítico para que nada sensible llegue al repo.
+# ==========================================================================
+
+# --- CREDENCIALES — NUNCA SUBIR ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+sa-*.json
+*-service-account*.json
+
+# --- Bases de datos locales ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+build/
+dist/
+
+# --- Logs / temporales ---
+*.log
+*.tmp
+.cache/
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

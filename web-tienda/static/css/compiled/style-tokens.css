@@ -1,0 +1,138 @@
+/* Style tokens resueltos (Champagne Noir) — generado para la plataforma propia.
+   Equivale a style-tokens.tpl con settings.* resueltos. miami-styles.tpl y
+   miami-import-custom.css cargan después y definen el look fino (--miami-*). */
+:root {
+  --main-background: #050505;
+  --main-foreground: #f5f3ee;
+  --accent-color: #b99b63;
+
+  --button-background: #b99b63;
+  --button-foreground: #0a0a0a;
+
+  --label-background: #b99b63;
+  --label-foreground: #0a0a0a;
+
+  --label-shipping-background: #4bb98c;
+  --label-shipping-foreground: #0a0a0a;
+
+  --stock-color: #b99b63;
+
+  --header-background: #050505;
+  --header-foreground: #f5f3ee;
+  --header-badge-background: #b99b63;
+  --header-badge-foreground: #0a0a0a;
+  --header-search-btn-background: #b99b63;
+  --header-search-btn-foreground: #0a0a0a;
+  --header-desktop-utilities-background: #050505;
+  --header-desktop-utilities-foreground: #f5f3ee;
+  --header-desktop-nav-background: #050505;
+  --header-desktop-nav-foreground: #f5f3ee;
+  --header-featured-link-foreground: #b99b63;
+
+  --primary-adbar-background: #0a0a0a;
+  --primary-adbar-foreground: #f5f3ee;
+  --secondary-adbar-background: #b99b63;
+  --secondary-adbar-foreground: #0a0a0a;
+
+  --footer-background: #050505;
+  --footer-foreground: #f5f3ee;
+
+  --banner-services-background: #0a0a0a;
+  --banner-services-foreground: #f5f3ee;
+
+  --institutional-background: #0a0a0a;
+  --institutional-foreground: #f5f3ee;
+  --video-background: #0a0a0a;
+  --video-foreground: #f5f3ee;
+  --timer-offers-background: #0a0a0a;
+  --timer-offers-foreground: #f5f3ee;
+  --timer-offers-module-background: #b99b63;
+  --timer-offers-module-foreground: #0a0a0a;
+  --newsletter-background: #0a0a0a;
+  --newsletter-foreground: #f5f3ee;
+
+  --header-foreground-opacity-10: #f5f3ee1A;
+  --header-foreground-opacity-20: #f5f3ee33;
+  --header-foreground-opacity-30: #f5f3ee4D;
+  --header-foreground-opacity-50: #f5f3ee80;
+
+  --main-foreground-opacity-03: #f5f3ee08;
+  --main-foreground-opacity-05: #f5f3ee0D;
+  --main-foreground-opacity-10: #f5f3ee1A;
+  --main-foreground-opacity-20: #f5f3ee33;
+  --main-foreground-opacity-30: #f5f3ee4D;
+  --main-foreground-opacity-40: #f5f3ee66;
+  --main-foreground-opacity-50: #f5f3ee80;
+  --main-foreground-opacity-60: #f5f3ee99;
+
+  --main-background-opacity-30: #0505054D;
+  --main-background-opacity-50: #05050580;
+  --main-background-opacity-80: #050505CC;
+
+  --label-shipping-background-80: #4bb98cCC;
+  --newsletter-foreground-opacity-50: #f5f3ee80;
+  --footer-foreground-opacity-40: #f5f3ee66;
+  --footer-foreground-opacity-60: #f5f3ee99;
+
+  --success: #4bb98c;
+  --danger: #dd7774;
+  --warning: #dc8f38;
+
+  --heading-font: 'Helvetica Neue', Helvetica, Inter, Arial, sans-serif;
+  --body-font: 'Helvetica Neue', Helvetica, Inter, Arial, sans-serif;
+
+  --font-base: 16px;
+  --font-base-default: 16px;
+  --font-huge: 21px;
+  --font-big: 20px;
+  --font-medium: 18px;
+  --font-small: 16px;
+  --font-smallest: 14px;
+  --font-extra-smallest: 13px;
+
+  --h1: 48px;
+  --h2: 40px;
+  --h3: 33px;
+  --h4: 28px;
+  --h5: 23px;
+  --h6: 19px;
+  --h6-small: 16px;
+
+  --title-font-weight: 700;
+
+  --spacing-base: 16px;
+  --spacing-half: calc(var(--spacing-base) / 2);
+  --spacing-quarter: calc(var(--spacing-base) / 4);
+  --spacing-1: calc(var(--spacing-base) * 0.25);
+  --spacing-2: calc(var(--spacing-base) * 0.5);
+  --spacing-3: var(--spacing-base);
+  --spacing-4: calc(var(--spacing-base) * 1.5);
+  --spacing-5: calc(var(--spacing-base) * 3);
+
+  --gutter: var(--spacing-base);
+  --gutter-container: var(--gutter);
+  --gutter-container-md: calc(var(--gutter) * 2);
+  --gutter-negative: calc(var(--gutter) * -1);
+  --gutter-half: calc(var(--gutter) / 2);
+  --gutter-half-negative: calc(var(--gutter) * -1 / 2);
+  --gutter-double: calc(var(--gutter) * 2);
+
+  --transition-fast: all 0.05s ease;
+  --transition-normal: all 0.3s ease;
+  --transition-slow: all 1s ease;
+  --drop-shadow: 0 0 8px 4px var(--main-foreground-opacity-05);
+
+  --border-radius: 8px;
+  --border-radius-medium: calc(var(--border-radius) / 1.3333);
+  --border-radius-small: calc(var(--border-radius) / 2);
+  --border-radius-smallest: calc(var(--border-radius) / 4);
+  --border-radius-full: 100%;
+  --border-solid: 1px solid;
+
+  /* Variables del layer Miami (fallbacks; miami-styles.tpl las redefine) */
+  --miami-gold: #b99b63;
+  --miami-gold-soft: #d4bb88;
+  --miami-dark: #050505;
+  --miami-text: #f5f3ee;
+  --miami-border: rgba(255,255,255,0.12);
+}

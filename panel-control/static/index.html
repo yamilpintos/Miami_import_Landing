@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Stock Manager · MIAMI_IMPORT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">M/I</div>
+    <div class="brand-text">
+      <div class="brand-name">MIAMI_IMPORT</div>
+      <div class="brand-sub">Stock Manager</div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-item active" data-tab="dashboard">
+      <span class="nav-icon">▮</span>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" data-tab="productos">
+      <span class="nav-icon">▦</span>
+      <span>Productos</span>
+    </button>
+    <button class="nav-item" data-tab="alta">
+      <span class="nav-icon">+</span>
+      <span>Nuevo producto</span>
+    </button>
+    <button class="nav-item" data-tab="pedidos">
+      <span class="nav-icon">▢</span>
+      <span>Pedidos</span>
+    </button>
+    <button class="nav-item" data-tab="estadisticas">
+      <span class="nav-icon">▲</span>
+      <span>Estadísticas</span>
+    </button>
+    <button class="nav-item" data-tab="precios-usd">
+      <span class="nav-icon">$</span>
+      <span>Precios USD</span>
+    </button>
+    <button class="nav-item" data-tab="whatsapp">
+      <span class="nav-icon">⌘</span>
+      <span>WhatsApp</span>
+    </button>
+    <button class="nav-item" data-tab="bot-mia">
+      <span class="nav-icon">⌬</span>
+      <span>Bot Mía</span>
+    </button>
+    <button class="nav-item" data-tab="legales">
+      <span class="nav-icon">📄</span>
+      <span>Páginas legales</span>
+    </button>
+    <button class="nav-item" data-tab="acciones">
+      <span class="nav-icon">⚡</span>
+      <span>Acciones</span>
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button id="btn-export" class="btn-secondary">Descargar Excel completo</button>
+    <button id="btn-logout" class="link-tn" style="background:none;border:0;cursor:pointer">Cerrar sesión ↗</button>
+  </div>
+</aside>
+
+<main class="main">
+
+  <!-- ========= DASHBOARD ========= -->
+  <section class="tab active" data-tab="dashboard">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Panel</div>
+        <h1>Dashboard</h1>
+      </div>
+      <button id="btn-refresh-stats" class="btn-ghost">Actualizar</button>
+    </header>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Productos publicados</div>
+        <div class="kpi-value" id="kpi-publicados">—</div>
+        <div class="kpi-sub" id="kpi-publicados-sub">de — totales</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Stock total (unidades)</div>
+        <div class="kpi-value" id="kpi-stock">—</div>
+        <div class="kpi-sub" id="kpi-stock-sub">en — variantes</div>
+      </div>
+      <div class="kpi-card kpi-warn">
+        <div class="kpi-label">Productos sin stock</div>
+        <div class="kpi-value" id="kpi-sin-stock">—</div>
+        <div class="kpi-sub">requieren atención</div>
+      </div>
+      <div class="kpi-card kpi-success">
+        <div class="kpi-label">Facturado (últimos pedidos)</div>
+        <div class="kpi-value" id="kpi-facturado">—</div>
+        <div class="kpi-sub" id="kpi-facturado-sub">— pedidos</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h2>Top vendidos</h2>
+        <ol class="list-top" id="list-top-vendidos">
+          <li class="loading-row">Cargando…</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h2>Stock bajo (≤ 1 unidad)</h2>
+        <ul class="list-stock" id="list-stock-bajo">
+          <li class="loading-row">Cargando…</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========= PRODUCTOS ========= -->
+  <section class="tab" data-tab="productos">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Catálogo en vivo</div>
+        <h1>Productos</h1>
+      </div>
+      <input id="search" class="search" placeholder="Buscar por nombre o marca…" />
+    </header>
+
+    <div id="products-grid" class="grid-products">
+      <div class="loading">Cargando productos…</div>
+    </div>
+  </section>
+
+  <!-- ========= NUEVO PRODUCTO ========= -->
+  <section class="tab" data-tab="alta">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Subir a Tiendanube</div>
+        <h1>Nuevo producto</h1>
+      </div>
+    </header>
+
+    <form id="form-nuevo" class="form-card" enctype="multipart/form-data">
+      <div class="form-row">
+        <label>
+          Nombre del producto
+          <input name="name" required placeholder="Ej: Buzo Balmain sin Capucha Gris" />
+        </label>
+        <label>
+          Marca
+          <input name="brand" required placeholder="Ej: Balmain" />
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label>
+          Precio
+          <input name="price" type="number" step="0.01" required placeholder="430" />
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" name="convertir_a_ars" />
+          <span>Convertir USD → ARS al TC del día</span>
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label>
+          Talles (separados por coma)
+          <input name="talles" placeholder="S, M, L, XL  (dejar vacío para 'único')" />
+        </label>
+        <label>
+          Stock por talle
+          <input name="stock_por_talle" type="number" value="1" min="0" />
+        </label>
+      </div>
+
+      <label>
+        Descripción
+        <textarea name="description" rows="3" placeholder="Texto adicional. Opcional."></textarea>
+      </label>
+
+      <label class="checkbox-label">
+        <input type="checkbox" name="publicado" checked />
+        <span>Publicar inmediatamente (no dejar como borrador)</span>
+      </label>
+
+      <label class="file-drop">
+        Imágenes del producto (podés seleccionar varias)
+        <input name="images" type="file" multiple accept="image/*" />
+        <span class="file-hint">Arrastrá o seleccioná — primera imagen = portada</span>
+      </label>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Crear y subir a Tiendanube</button>
+        <span id="alta-status"></span>
+      </div>
+    </form>
+
+    <div id="alta-result" class="result-card hidden"></div>
+  </section>
+
+  <!-- ========= PEDIDOS ========= -->
+  <section class="tab" data-tab="pedidos">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Últimos pedidos</div>
+        <h1>Pedidos</h1>
+      </div>
+      <button id="btn-refresh-orders" class="btn-ghost">Actualizar</button>
+    </header>
+
+    <div id="orders-list" class="orders-list">
+      <div class="loading">Cargando pedidos…</div>
+    </div>
+  </section>
+
+  <!-- ========= ESTADISTICAS ========= -->
+  <section class="tab" data-tab="estadisticas">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Métricas</div>
+        <h1>Estadísticas</h1>
+      </div>
+      <button id="btn-refresh-stats2" class="btn-ghost">Actualizar</button>
+    </header>
+
+    <div class="panel">
+      <p>Más métricas en el admin de Tiendanube:
+        <a href="https://miamiimport4.mitiendanube.com/admin/v2/statistics" target="_blank">Ver panel completo ↗</a>
+      </p>
+      <p>Para descargar todo el catálogo + pedidos + variantes en Excel, click en el botón
+        <b>Descargar Excel completo</b> del menú izquierdo.</p>
+    </div>
+
+    <div class="kpi-grid" id="stats-grid">
+      <!-- se rellena con JS -->
+    </div>
+  </section>
+
+  <!-- ========= PRECIOS USD ========= -->
+  <section class="tab" data-tab="precios-usd">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Pricing</div>
+        <h1>Precios en USD</h1>
+      </div>
+      <button id="btn-refresh-usd" class="btn-ghost">Actualizar</button>
+    </header>
+
+    <div class="panel">
+      <h2>Cómo funciona</h2>
+      <p>Vos manejás precios en <b>USD</b> internamente (que es lo que realmente cuesta el producto). El cliente en la tienda <b>paga en ARS</b> (ARS = USD × tipo de cambio). Cuando cambia el dólar, ajustás la cotización acá y con un click se recalculan TODOS los precios ARS en Tiendanube.</p>
+    </div>
+
+    <div class="form-card">
+      <div class="form-row">
+        <label>
+          Cotización USD → ARS actual
+          <input type="number" id="usd-rate-input" step="0.01" placeholder="1410" />
+        </label>
+        <div style="display:flex;align-items:end;">
+          <button type="button" id="btn-save-rate" class="btn-primary">Guardar cotización</button>
+        </div>
+      </div>
+      <p style="color:#888;font-size:13px;margin-top:8px;">
+        Última cotización guardada: <b id="usd-rate-current">—</b>
+      </p>
+    </div>
+
+    <div class="form-card">
+      <h2 style="margin-top:0;">Acciones de precios</h2>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button type="button" id="btn-seed-usd" class="btn-secondary">
+          Inicializar USD desde precios actuales
+        </button>
+        <button type="button" id="btn-sync-usd" class="btn-primary">
+          Recalcular y subir ARS = USD × cotización
+        </button>
+      </div>
+      <p style="color:#888;font-size:13px;margin-top:14px;">
+        <b>Inicializar</b>: la primera vez, toma los precios ARS actuales de Tiendanube y los divide por la cotización para guardar el equivalente USD.<br/>
+        <b>Recalcular</b>: con tus USD prices guardados y la cotización actual, actualiza los precios ARS en TODAS las variantes de Tiendanube.
+      </p>
+      <div id="usd-action-status" style="margin-top:16px;font-size:13px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Lista de productos con USD</h2>
+      <p style="color:#888;font-size:13px;">Editá el USD de cada producto y después tocá "Recalcular y subir ARS" arriba.</p>
+      <div id="usd-prices-list">
+        <div class="loading">Cargando…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========= WHATSAPP ========= -->
+  <section class="tab" data-tab="whatsapp">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Plantillas</div>
+        <h1>WhatsApp</h1>
+      </div>
+      <button id="btn-save-wa" class="btn-primary">Guardar cambios</button>
+    </header>
+
+    <div class="panel">
+      <p>Plantillas pre-armadas que usás cuando hacés click en "WhatsApp" en la tab Pedidos. Placeholders disponibles: <code>{name}</code>, <code>{order}</code>, <code>{eta}</code>, <code>{carrier}</code>, <code>{tracking}</code> — se reemplazan automáticamente.</p>
+    </div>
+
+    <div id="wa-templates-container">
+      <div class="loading">Cargando plantillas…</div>
+    </div>
+  </section>
+
+  <!-- ========= BOT MIA ========= -->
+  <section class="tab" data-tab="bot-mia">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Configuración del bot</div>
+        <h1>Bot Mía</h1>
+      </div>
+      <button id="btn-save-bot-cfg" class="btn-primary">Guardar cambios</button>
+    </header>
+
+    <div class="panel">
+      <p>Acá editás lo que sabe Mía (el bot de Instagram/WhatsApp) cuando le preguntan. Si dejás vacío, el bot deriva a humano.</p>
+    </div>
+
+    <div class="form-card">
+      <label>
+        <b>SHIPPING_INFO</b> — Lo que Mía sabe sobre envíos
+        <textarea id="cfg-shipping" rows="6" placeholder="Operadores, plazos, costos, modalidades..."></textarea>
+      </label>
+    </div>
+
+    <div class="form-card">
+      <label>
+        <b>PAYMENT_INFO</b> — Medios de pago
+        <textarea id="cfg-payment" rows="4" placeholder="Mercado Pago, transferencia, etc."></textarea>
+      </label>
+    </div>
+
+    <div class="form-card">
+      <label>
+        <b>EXCHANGE_INFO</b> — Cambios y devoluciones
+        <textarea id="cfg-exchange" rows="4" placeholder="48hs hábiles, condiciones..."></textarea>
+      </label>
+    </div>
+  </section>
+
+  <!-- ========= LEGALES ========= -->
+  <section class="tab" data-tab="legales">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">HTMLs listos para pegar</div>
+        <h1>Páginas legales</h1>
+      </div>
+    </header>
+
+    <div class="panel">
+      <p>Estos HTMLs los pegás manualmente en <b>Admin Tiendanube → Mi tienda → Páginas</b>. Click en "Ver y copiar" para verlos y copiarlos al portapapeles.</p>
+    </div>
+
+    <div id="legal-pages-list">
+      <div class="loading">Cargando…</div>
+    </div>
+  </section>
+
+  <!-- ========= ACCIONES ========= -->
+  <section class="tab" data-tab="acciones">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Utilidades</div>
+        <h1>Acciones rápidas</h1>
+      </div>
+    </header>
+
+    <div class="form-card">
+      <h2 style="margin-top:0;">Redeploy del bot en Render</h2>
+      <p style="color:#888;font-size:13px;">Trigger un redeploy del Bot-Miami en Render (requiere <code>RENDER_DEPLOY_HOOK</code> configurado en .env).</p>
+      <button type="button" id="btn-redeploy-bot" class="btn-primary">Redeploy bot ahora</button>
+      <div id="redeploy-status" style="margin-top:14px;font-size:13px;"></div>
+    </div>
+
+    <div class="form-card">
+      <h2>Theme FTP (subir cambios visuales)</h2>
+      <p style="color:#888;font-size:13px;">Por seguridad esto no corre desde el panel. Desde tu terminal:</p>
+      <pre style="background:#0a0a0a;color:#d4bb88;padding:12px;font-size:11px;overflow-x:auto;">cd "C:\Users\Yamil\Desktop\Miami Import\Stock mIAmimport_-20260422T165214Z-3-001\Stock mIAmimport_"
+$env:FTP_PASSWORD = 'pduox3ob'
+python upload_theme_to_tiendanube.py</pre>
+    </div>
+  </section>
+
+</main>
+
+<!-- ========= MODAL PRODUCTO ========= -->
+<div id="modal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-content" id="modal-content">
+    <button class="modal-close" id="modal-close">×</button>
+    <div id="modal-body">Cargando…</div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast hidden"></div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

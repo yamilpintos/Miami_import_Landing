@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Pedido #{{ order.number }} — {{ STORE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="mi-container" style="max-width:680px;padding:60px 24px;min-height:60vh;text-align:center">
+  {% set paid = order.payment_status == 'paid' %}
+  <div style="font-size:48px;margin-bottom:16px">{{ '✅' if paid else '⏳' }}</div>
+  <h1 style="font-size:28px;margin:0 0 10px">{{ '¡Gracias por tu compra!' if paid else 'Estamos confirmando tu pago' }}</h1>
+  <p style="color:rgba(245,243,238,.6)">Pedido <strong>#{{ order.number }}</strong>
+    {% if not paid %}<br>Apenas se acredite el pago vas a ver el pedido como pagado. Puede tardar unos segundos.{% endif %}</p>
+
+  <div style="background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px;margin:32px 0;text-align:left">
+    {% for it in order.items %}
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <span>{{ it.product_name }}{% if it.variant_value %} · {{ it.variant_value }}{% endif %} <span style="color:rgba(245,243,238,.45)">x{{ it.quantity }}</span></span>
+      <span style="font-weight:600">{{ it.subtotal | ars }}</span>
+    </div>
+    {% endfor %}
+    <div style="display:flex;justify-content:space-between;margin-top:16px;font-size:18px;font-weight:700">
+      <span>Total</span><span>{{ order.total | ars }}</span>
+    </div>
+    <div style="margin-top:10px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,243,238,.5)">
+      Estado: {{ order.status }} · Pago: {{ order.payment_status }}</div>
+  </div>
+
+  <a href="/productos" style="display:inline-block;padding:14px 32px;border:1px solid var(--miami-gold,#b99b63);
+    color:var(--miami-gold,#b99b63);border-radius:999px;letter-spacing:.18em;text-transform:uppercase;font-size:12px">Seguir comprando</a>
+</div>
+
+{% if order.payment_status != 'paid' %}
+<script>
+  // Refresca para reflejar el pago acreditado vía webhook.
+  let tries=0; const iv=setInterval(async()=>{ tries++; if(tries>10){clearInterval(iv);return;}
+    const r=await fetch(location.pathname,{headers:{'X-Requested-With':'poll'}});
+    if(r.ok){ const t=await r.text(); if(t.includes('payment_status'+': paid') || t.includes('Pago: paid')){ location.reload(); clearInterval(iv);} }
+  },3000);
+</script>
+{% endif %}
+{% endblock %}

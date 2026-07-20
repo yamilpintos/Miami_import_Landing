@@ -1,0 +1,46 @@
+# Blueprint de Render para la TIENDA PÚBLICA.
+# IMPORTANTE: la tienda usa la MISMA base Postgres que el panel.
+# Como está en otro repo, DATABASE_URL se setea a mano en el dashboard con la
+# "Internal Database URL" de la base 'miami-import-db' creada por el panel.
+
+services:
+  - type: web
+    name: miami-tienda
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT --no-server-header --proxy-headers --forwarded-allow-ips='*'
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      # Pegar la Internal Database URL del Postgres del panel (miami-import-db):
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEV_MODE
+        value: "false"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: USD_TO_ARS_RATE
+        value: "1410"
+      - key: STORE_BASE_URL
+        sync: false        # https://miami-tienda.onrender.com (o tu dominio)
+      - key: PANEL_BASE_URL
+        sync: false
+      # Stripe (claves SOLO acá en backend):
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: CHECKOUT_CURRENCY
+        value: "ars"
+      # Google OAuth:
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false

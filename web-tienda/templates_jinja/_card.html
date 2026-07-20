@@ -1,0 +1,19 @@
+{# Tarjeta de producto — markup de precio dual USD/ARS idéntico al theme #}
+{% macro product_card(p, usd_rate) %}
+{% set img = p.images[0].url if p.images else '/static/images/empty-placeholder.png' %}
+{% set ars = p.min_price %}
+{% set usd = (p.variants[0].usd_price if p.variants and p.variants[0].usd_price else (ars / usd_rate if ars else None)) %}
+<a class="mi-card" href="/productos/{{ p.handle }}/">
+  {% if p.total_stock == 0 %}<span class="mi-soldout">Agotado</span>{% endif %}
+  <div class="mi-card__img"><img src="{{ img }}" alt="{{ p.name }}" loading="lazy"/></div>
+  <div class="mi-card__body">
+    <div class="mi-card__brand">{{ p.brand or '' }}</div>
+    <div class="mi-card__name">{{ p.name }}</div>
+    <div class="miami-price-dual">
+      <span class="miami-price-usd">{{ usd | usd }}</span>
+      <span class="miami-price-ars-label">Precio en pesos</span>
+      <span class="miami-price-ars">{{ ars | ars }}</span>
+    </div>
+  </div>
+</a>
+{% endmacro %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Finalizar compra — {{ STORE_NAME }}{% endblock %}
+{% block head_extra %}{% if stripe_enabled %}<script src="https://js.stripe.com/v3/"></script>{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mi-container" style="padding-top:48px;min-height:60vh;max-width:1040px">
+  <h1 class="mi-section-title" style="margin-top:24px">Finalizar compra</h1>
+
+  {% if not cart['items'] %}
+    <p style="text-align:center;color:rgba(245,243,238,.5);padding:40px 0">
+      Tu carrito está vacío. <a href="/productos" style="color:var(--miami-gold,#b99b63)">Ver catálogo →</a></p>
+  {% else %}
+  <div style="display:grid;grid-template-columns:1fr 380px;gap:48px;align-items:start" class="mi-checkout-grid">
+    {# Datos #}
+    <div>
+      <form id="form-checkout" class="mi-form">
+        <h3 class="mi-co-h">Contacto</h3>
+        <label>Email</label>
+        <input name="email" type="email" required value="{{ account.email if account else '' }}"/>
+
+        <h3 class="mi-co-h" style="margin-top:24px">Envío</h3>
+        <label>Nombre y apellido</label><input name="full_name" required value="{{ account.full_name if account else '' }}"/>
+        <label>Teléfono</label><input name="phone" required value="{{ account.phone if account else '' }}"/>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+          <div><label>Calle</label><input name="street" required/></div>
+          <div><label>Número</label><input name="number" required/></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><label>Ciudad</label><input name="city" required/></div>
+          <div><label>Provincia</label><input name="province" required/></div>
+        </div>
+        <label>Código postal</label><input name="zipcode" required/>
+
+        {% if stripe_enabled %}
+          <button type="submit" id="btn-continue">Continuar al pago →</button>
+          <div id="payment-section" style="display:none;margin-top:28px">
+            <h3 class="mi-co-h">Pago</h3>
+            <div id="payment-element" style="margin:14px 0"></div>
+            <button type="button" id="btn-pay">Pagar ahora</button>
+          </div>
+        {% else %}
+          <div style="margin-top:24px;padding:16px;border:1px solid rgba(220,143,56,.4);border-radius:10px;color:#dca06a;font-size:14px">
+            ⚠ El pago con Stripe todavía no está configurado (faltan las claves <code>STRIPE_*</code>). Cargalas en <code>.env</code> para habilitar el cobro.
+          </div>
+        {% endif %}
+        <div class="mi-form-msg" style="margin-top:14px"></div>
+      </form>
+    </div>
+
+    {# Resumen #}
+    <aside style="background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:26px;position:sticky;top:100px">
+      <h3 style="margin:0 0 18px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--miami-gold,#b99b63)">Tu pedido</h3>
+      {% for it in cart['items'] %}
+      <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <img src="{{ it.image }}" alt="" style="width:48px;height:60px;object-fit:cover;border-radius:6px"/>
+        <div style="flex:1;font-size:13px">
+          <div>{{ it.product_name }}</div>
+          <div style="color:rgba(245,243,238,.45)">{% if it.value %}Talle {{ it.value }} · {% endif %}x{{ it.quantity }}</div>
+        </div>
+        <div style="font-size:13px;font-weight:600">{{ it.line_total | ars }}</div>
+      </div>
+      {% endfor %}
+      <div style="display:flex;justify-content:space-between;margin-top:18px;font-size:16px;font-weight:700">
+        <span>Total</span><span>{{ cart['subtotal'] | ars }}</span>
+      </div>
+    </aside>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+  .mi-co-h{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--miami-gold,#b99b63);margin:0 0 10px}
+  .mi-form label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,243,238,.55);margin:12px 0 5px}
+  .mi-form input{width:100%;padding:11px 13px;background:#0d0d0d;border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:8px;outline:none;font-size:14px}
+  .mi-form input:focus{border-color:var(--miami-gold,#b99b63)}
+  .mi-form button{margin-top:22px;width:100%;padding:15px;border:0;border-radius:999px;background:var(--miami-gold,#b99b63);color:#0a0a0a;font-weight:700;letter-spacing:.15em;text-transform:uppercase;font-size:13px;cursor:pointer}
+  .mi-form-msg{font-size:13px;color:#ff8a8a}
+  @media(max-width:860px){.mi-checkout-grid{grid-template-columns:1fr !important}}
+</style>
+{% endblock %}
+
+{% block scripts %}
+{% if stripe_enabled and cart['items'] %}
+<script>
+  const form=document.getElementById('form-checkout');
+  const msg=form.querySelector('.mi-form-msg');
+  let stripe, elements, clientSecret, orderNumber;
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault(); msg.textContent='';
+    if(!form.reportValidity()) return;
+    const btn=document.getElementById('btn-continue'); btn.disabled=true; btn.textContent='Generando pago…';
+    const body=Object.fromEntries(new FormData(form).entries());
+    try{
+      const r=await fetch('/api/checkout/create-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const data=await r.json(); if(!r.ok) throw new Error(data.detail||'Error');
+      clientSecret=data.client_secret; orderNumber=data.order_number;
+      stripe=Stripe(data.publishable_key);
+      elements=stripe.elements({clientSecret});
+      elements.create('payment').mount('#payment-element');
+      document.getElementById('payment-section').style.display='block';
+      btn.style.display='none';
+    }catch(err){ msg.textContent=err.message; btn.disabled=false; btn.textContent='Continuar al pago →'; }
+  });
+
+  document.getElementById('btn-pay').addEventListener('click', async ()=>{
+    const pay=document.getElementById('btn-pay'); pay.disabled=true; pay.textContent='Procesando…'; msg.textContent='';
+    const {error}=await stripe.confirmPayment({
+      elements,
+      confirmParams:{ return_url: window.location.origin + '/pedido/' + orderNumber },
+    });
+    if(error){ msg.textContent=error.message; pay.disabled=false; pay.textContent='Pagar ahora'; }
+  });
+</script>
+{% endif %}
+{% endblock %}

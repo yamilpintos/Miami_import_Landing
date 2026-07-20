@@ -1,0 +1,1951 @@
+[
+  {
+    "id": 38580872,
+    "parent": 0,
+    "subcategories": [
+      38659195,
+      38659197,
+      38659198,
+      38659201,
+      38659202,
+      38659203
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:32:47+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Off-White"
+    },
+    "handle": {
+      "es": "off-white"
+    },
+    "description": {
+      "es": "Selección actual de Off-White. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659195,
+    "parent": 38580872,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:14+00:00",
+    "updated_at": "2026-05-17T02:32:53+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos6"
+    },
+    "description": {
+      "es": "Buzos de Off-White disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659197,
+    "parent": 38580872,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:14+00:00",
+    "updated_at": "2026-05-17T02:32:54+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Camisas"
+    },
+    "handle": {
+      "es": "camisas"
+    },
+    "description": {
+      "es": "Camisas de Off-White disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659198,
+    "parent": 38580872,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:15+00:00",
+    "updated_at": "2026-05-17T02:32:54+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Pantalones"
+    },
+    "handle": {
+      "es": "pantalones"
+    },
+    "description": {
+      "es": "Pantalones de Off-White disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659201,
+    "parent": 38580872,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:16+00:00",
+    "updated_at": "2026-05-17T02:32:55+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras4"
+    },
+    "description": {
+      "es": "Remeras de Off-White disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659202,
+    "parent": 38580872,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:17+00:00",
+    "updated_at": "2026-05-17T02:32:55+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Tops"
+    },
+    "handle": {
+      "es": "tops"
+    },
+    "description": {
+      "es": "Tops de Off-White disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659203,
+    "parent": 38580872,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:17+00:00",
+    "updated_at": "2026-05-17T02:32:56+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Zapatillas"
+    },
+    "handle": {
+      "es": "zapatillas"
+    },
+    "description": {
+      "es": "Zapatillas de Off-White disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38580873,
+    "parent": 0,
+    "subcategories": [
+      38830588,
+      38830589,
+      38830590
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:27:38+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Balenciaga"
+    },
+    "handle": {
+      "es": "balenciaga"
+    },
+    "description": {
+      "es": "Selección actual de Balenciaga. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830588,
+    "parent": 38580873,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:46+00:00",
+    "updated_at": "2026-05-17T02:27:46+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Gorras"
+    },
+    "handle": {
+      "es": "gorras1"
+    },
+    "description": {
+      "es": "Gorras de Balenciaga disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830589,
+    "parent": 38580873,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:47+00:00",
+    "updated_at": "2026-05-17T02:27:47+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras1"
+    },
+    "description": {
+      "es": "Remeras de Balenciaga disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830590,
+    "parent": 38580873,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:48+00:00",
+    "updated_at": "2026-05-17T02:27:48+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos1"
+    },
+    "description": {
+      "es": "Buzos de Balenciaga disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38580874,
+    "parent": 0,
+    "subcategories": [
+      38659160,
+      38659161,
+      38659162,
+      38659164,
+      38659165,
+      38659166,
+      38659168,
+      38659170,
+      38659173,
+      38659174
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:32:48+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Diesel"
+    },
+    "handle": {
+      "es": "diesel"
+    },
+    "description": {
+      "es": "Selección actual de Diesel. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659160,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:42+00:00",
+    "updated_at": "2026-05-17T02:32:57+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos7"
+    },
+    "description": {
+      "es": "Buzos de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659161,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:43+00:00",
+    "updated_at": "2026-05-17T02:32:57+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Camperas"
+    },
+    "handle": {
+      "es": "camperas1"
+    },
+    "description": {
+      "es": "Camperas de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659162,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:44+00:00",
+    "updated_at": "2026-05-17T02:32:58+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Chaquetas"
+    },
+    "handle": {
+      "es": "chaquetas"
+    },
+    "description": {
+      "es": "Chaquetas de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659164,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:45+00:00",
+    "updated_at": "2026-05-17T02:32:58+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Conjuntos"
+    },
+    "handle": {
+      "es": "conjuntos"
+    },
+    "description": {
+      "es": "Conjuntos de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659165,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:45+00:00",
+    "updated_at": "2026-05-17T02:32:59+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Gorras"
+    },
+    "handle": {
+      "es": "gorras2"
+    },
+    "description": {
+      "es": "Gorras de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659166,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:46+00:00",
+    "updated_at": "2026-05-17T02:33:00+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Musculosas"
+    },
+    "handle": {
+      "es": "musculosas"
+    },
+    "description": {
+      "es": "Musculosas de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659168,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:47+00:00",
+    "updated_at": "2026-05-17T02:33:00+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Ojotas"
+    },
+    "handle": {
+      "es": "ojotas"
+    },
+    "description": {
+      "es": "Ojotas de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659170,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:48+00:00",
+    "updated_at": "2026-05-17T02:33:01+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras5"
+    },
+    "description": {
+      "es": "Remeras de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659173,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:58+00:00",
+    "updated_at": "2026-05-17T02:33:02+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Tops"
+    },
+    "handle": {
+      "es": "tops1"
+    },
+    "description": {
+      "es": "Tops de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659174,
+    "parent": 38580874,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:59+00:00",
+    "updated_at": "2026-05-17T02:33:02+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Vestidos"
+    },
+    "handle": {
+      "es": "vestidos"
+    },
+    "description": {
+      "es": "Vestidos de Diesel disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38580875,
+    "parent": 0,
+    "subcategories": [
+      38830585,
+      38830586,
+      38830587
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:27:38+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Amiri"
+    },
+    "handle": {
+      "es": "amiri"
+    },
+    "description": {
+      "es": "Selección actual de Amiri. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830585,
+    "parent": 38580875,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:44+00:00",
+    "updated_at": "2026-05-17T02:27:44+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Gorras"
+    },
+    "handle": {
+      "es": "gorras"
+    },
+    "description": {
+      "es": "Gorras de Amiri disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830586,
+    "parent": 38580875,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:45+00:00",
+    "updated_at": "2026-05-17T02:27:45+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras"
+    },
+    "description": {
+      "es": "Remeras de Amiri disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830587,
+    "parent": 38580875,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:46+00:00",
+    "updated_at": "2026-05-17T02:27:46+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos"
+    },
+    "description": {
+      "es": "Buzos de Amiri disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38580876,
+    "parent": 0,
+    "subcategories": [
+      38659186,
+      38659187,
+      38659188,
+      38659189,
+      38659190
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:32:48+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Hugo Boss"
+    },
+    "handle": {
+      "es": "hugo-boss"
+    },
+    "description": {
+      "es": "Selección actual de Hugo Boss. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659186,
+    "parent": 38580876,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:07+00:00",
+    "updated_at": "2026-05-17T02:33:03+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Gorras"
+    },
+    "handle": {
+      "es": "gorras3"
+    },
+    "description": {
+      "es": "Gorras de Hugo Boss disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659187,
+    "parent": 38580876,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:08+00:00",
+    "updated_at": "2026-05-17T02:33:03+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Neceseres"
+    },
+    "handle": {
+      "es": "neceseres"
+    },
+    "description": {
+      "es": "Neceseres de Hugo Boss disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659188,
+    "parent": 38580876,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:09+00:00",
+    "updated_at": "2026-05-17T02:33:04+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Pilusos"
+    },
+    "handle": {
+      "es": "pilusos"
+    },
+    "description": {
+      "es": "Pilusos de Hugo Boss disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659189,
+    "parent": 38580876,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:09+00:00",
+    "updated_at": "2026-05-17T02:33:05+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras6"
+    },
+    "description": {
+      "es": "Remeras de Hugo Boss disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659190,
+    "parent": 38580876,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:10+00:00",
+    "updated_at": "2026-05-17T02:33:05+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Shorts"
+    },
+    "handle": {
+      "es": "shorts"
+    },
+    "description": {
+      "es": "Shorts de Hugo Boss disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38580877,
+    "parent": 0,
+    "subcategories": [
+      38659175,
+      38659176,
+      38659177,
+      38659178,
+      38659179,
+      38659180,
+      38659182,
+      38659184,
+      38659185
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:32:49+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Emporio Armani"
+    },
+    "handle": {
+      "es": "emporio-armani"
+    },
+    "description": {
+      "es": "Selección actual de Emporio Armani. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659175,
+    "parent": 38580877,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:00+00:00",
+    "updated_at": "2026-05-17T02:33:06+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos8"
+    },
+    "description": {
+      "es": "Buzos de Emporio Armani disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659176,
+    "parent": 38580877,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:01+00:00",
+    "updated_at": "2026-05-17T02:33:07+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Camperas"
+    },
+    "handle": {
+      "es": "camperas2"
+    },
+    "description": {
+      "es": "Camperas de Emporio Armani disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659177,
+    "parent": 38580877,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:01+00:00",
+    "updated_at": "2026-05-17T02:33:07+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Conjuntos"
+    },
+    "handle": {
+      "es": "conjuntos1"
+    },
+    "description": {
+      "es": "Conjuntos de Emporio Armani disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659178,
+    "parent": 38580877,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:02+00:00",
+    "updated_at": "2026-05-17T02:33:08+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Gorras"
+    },
+    "handle": {
+      "es": "gorras4"
+    },
+    "description": {
+      "es": "Gorras de Emporio Armani disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659179,
+    "parent": 38580877,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:03+00:00",
+    "updated_at": "2026-05-17T02:33:08+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Morrales"
+    },
+    "handle": {
+      "es": "morrales"
+    },
+    "description": {
+      "es": "Morrales de Emporio Armani disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659180,
+    "parent": 38580877,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:04+00:00",
+    "updated_at": "2026-05-17T02:33:09+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Neceseres"
+    },
+    "handle": {
+      "es": "neceseres1"
+    },
+    "description": {
+      "es": "Neceseres de Emporio Armani disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659182,
+    "parent": 38580877,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:05+00:00",
+    "updated_at": "2026-05-17T02:33:10+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Ojotas"
+    },
+    "handle": {
+      "es": "ojotas1"
+    },
+    "description": {
+      "es": "Ojotas de Emporio Armani disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659184,
+    "parent": 38580877,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:05+00:00",
+    "updated_at": "2026-05-17T02:33:10+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Pantalones"
+    },
+    "handle": {
+      "es": "pantalones1"
+    },
+    "description": {
+      "es": "Pantalones de Emporio Armani disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659185,
+    "parent": 38580877,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:06+00:00",
+    "updated_at": "2026-05-17T02:33:11+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras7"
+    },
+    "description": {
+      "es": "Remeras de Emporio Armani disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38580878,
+    "parent": 0,
+    "subcategories": [
+      38659192,
+      38659193,
+      38659194
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:32:50+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Michael Kors"
+    },
+    "handle": {
+      "es": "michael-kors"
+    },
+    "description": {
+      "es": "Selección actual de Michael Kors. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659192,
+    "parent": 38580878,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:12+00:00",
+    "updated_at": "2026-05-17T02:33:12+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Cintos"
+    },
+    "handle": {
+      "es": "cintos"
+    },
+    "description": {
+      "es": "Cintos de Michael Kors disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659193,
+    "parent": 38580878,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:12+00:00",
+    "updated_at": "2026-05-17T02:33:12+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Ojotas"
+    },
+    "handle": {
+      "es": "ojotas2"
+    },
+    "description": {
+      "es": "Ojotas de Michael Kors disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659194,
+    "parent": 38580878,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:13+00:00",
+    "updated_at": "2026-05-17T02:33:13+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras8"
+    },
+    "description": {
+      "es": "Remeras de Michael Kors disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38580879,
+    "parent": 0,
+    "subcategories": [
+      38659156,
+      38659157,
+      38659158,
+      38659159
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:32:50+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Calvin Klein"
+    },
+    "handle": {
+      "es": "calvin-klein"
+    },
+    "description": {
+      "es": "Selección actual de Calvin Klein. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659156,
+    "parent": 38580879,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:39+00:00",
+    "updated_at": "2026-05-17T02:33:13+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Camperas"
+    },
+    "handle": {
+      "es": "camperas3"
+    },
+    "description": {
+      "es": "Camperas de Calvin Klein disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659157,
+    "parent": 38580879,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:40+00:00",
+    "updated_at": "2026-05-17T02:33:14+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Gorras"
+    },
+    "handle": {
+      "es": "gorras5"
+    },
+    "description": {
+      "es": "Gorras de Calvin Klein disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659158,
+    "parent": 38580879,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:41+00:00",
+    "updated_at": "2026-05-17T02:33:15+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Morrales"
+    },
+    "handle": {
+      "es": "morrales1"
+    },
+    "description": {
+      "es": "Morrales de Calvin Klein disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659159,
+    "parent": 38580879,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:42+00:00",
+    "updated_at": "2026-05-17T02:33:15+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Neceseres"
+    },
+    "handle": {
+      "es": "neceseres2"
+    },
+    "description": {
+      "es": "Neceseres de Calvin Klein disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38580880,
+    "parent": 0,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:27:39+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Essentials"
+    },
+    "handle": {
+      "es": "essentials"
+    },
+    "description": {
+      "es": "Selección actual de Essentials. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38580881,
+    "parent": 0,
+    "subcategories": [
+      38659204,
+      38659205,
+      38659206,
+      38659207,
+      38659208
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T01:50:30+00:00",
+    "updated_at": "2026-05-17T02:32:51+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Palm Angels"
+    },
+    "handle": {
+      "es": "palm-angels"
+    },
+    "description": {
+      "es": "Selección actual de Palm Angels. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659204,
+    "parent": 38580881,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:18+00:00",
+    "updated_at": "2026-05-17T02:33:16+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos9"
+    },
+    "description": {
+      "es": "Buzos de Palm Angels disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659205,
+    "parent": 38580881,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:19+00:00",
+    "updated_at": "2026-05-17T02:33:16+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Ojotas"
+    },
+    "handle": {
+      "es": "ojotas3"
+    },
+    "description": {
+      "es": "Ojotas de Palm Angels disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659206,
+    "parent": 38580881,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:20+00:00",
+    "updated_at": "2026-05-17T02:33:17+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras9"
+    },
+    "description": {
+      "es": "Remeras de Palm Angels disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659207,
+    "parent": 38580881,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:21+00:00",
+    "updated_at": "2026-05-17T02:33:18+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Shorts"
+    },
+    "handle": {
+      "es": "shorts1"
+    },
+    "description": {
+      "es": "Shorts de Palm Angels disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659208,
+    "parent": 38580881,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:21+00:00",
+    "updated_at": "2026-05-17T02:33:18+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Tops"
+    },
+    "handle": {
+      "es": "tops2"
+    },
+    "description": {
+      "es": "Tops de Palm Angels disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38581799,
+    "parent": 0,
+    "subcategories": [
+      38659154,
+      38659155
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T04:05:36+00:00",
+    "updated_at": "2026-05-17T02:32:52+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Balmain"
+    },
+    "handle": {
+      "es": "balmain"
+    },
+    "description": {
+      "es": "Selección actual de Balmain. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659154,
+    "parent": 38581799,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:38+00:00",
+    "updated_at": "2026-05-17T02:33:19+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos10"
+    },
+    "description": {
+      "es": "Buzos de Balmain disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659155,
+    "parent": 38581799,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:45:39+00:00",
+    "updated_at": "2026-05-17T02:33:20+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras10"
+    },
+    "description": {
+      "es": "Remeras de Balmain disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38581800,
+    "parent": 0,
+    "subcategories": [
+      38659191
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-04T04:05:36+00:00",
+    "updated_at": "2026-05-17T02:32:52+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Kenzo"
+    },
+    "handle": {
+      "es": "kenzo"
+    },
+    "description": {
+      "es": "Selección actual de Kenzo. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38659191,
+    "parent": 38581800,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-07T19:46:11+00:00",
+    "updated_at": "2026-05-17T02:33:20+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos11"
+    },
+    "description": {
+      "es": "Buzos de Kenzo disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830579,
+    "parent": 0,
+    "subcategories": [
+      38830591
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:40+00:00",
+    "updated_at": "2026-05-17T02:27:40+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Burberry"
+    },
+    "handle": {
+      "es": "burberry"
+    },
+    "description": {
+      "es": "Selección actual de Burberry. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830591,
+    "parent": 38830579,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:49+00:00",
+    "updated_at": "2026-05-17T02:27:49+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos2"
+    },
+    "description": {
+      "es": "Buzos de Burberry disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830581,
+    "parent": 0,
+    "subcategories": [
+      38830592
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:40+00:00",
+    "updated_at": "2026-05-17T02:27:40+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Givenchy"
+    },
+    "handle": {
+      "es": "givenchy"
+    },
+    "description": {
+      "es": "Selección actual de Givenchy. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830592,
+    "parent": 38830581,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:49+00:00",
+    "updated_at": "2026-05-17T02:27:49+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos3"
+    },
+    "description": {
+      "es": "Buzos de Givenchy disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830582,
+    "parent": 0,
+    "subcategories": [
+      38830593
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:41+00:00",
+    "updated_at": "2026-05-17T02:27:41+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Louis Vuitton"
+    },
+    "handle": {
+      "es": "louis-vuitton"
+    },
+    "description": {
+      "es": "Selección actual de Louis Vuitton. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830593,
+    "parent": 38830582,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:50+00:00",
+    "updated_at": "2026-05-17T02:27:50+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos4"
+    },
+    "description": {
+      "es": "Buzos de Louis Vuitton disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830583,
+    "parent": 0,
+    "subcategories": [
+      38830594
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:42+00:00",
+    "updated_at": "2026-05-17T02:27:42+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Prada"
+    },
+    "handle": {
+      "es": "prada"
+    },
+    "description": {
+      "es": "Selección actual de Prada. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830594,
+    "parent": 38830583,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:51+00:00",
+    "updated_at": "2026-05-17T02:27:51+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras2"
+    },
+    "description": {
+      "es": "Remeras de Prada disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830584,
+    "parent": 0,
+    "subcategories": [
+      38830595,
+      38830596,
+      38830597
+    ],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:43+00:00",
+    "updated_at": "2026-05-17T02:27:43+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Supreme"
+    },
+    "handle": {
+      "es": "supreme"
+    },
+    "description": {
+      "es": "Selección actual de Supreme. Piezas originales con licencia, importadas."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830595,
+    "parent": 38830584,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:52+00:00",
+    "updated_at": "2026-05-17T02:27:52+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Camperas"
+    },
+    "handle": {
+      "es": "camperas"
+    },
+    "description": {
+      "es": "Camperas de Supreme disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830596,
+    "parent": 38830584,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:52+00:00",
+    "updated_at": "2026-05-17T02:27:52+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Buzos"
+    },
+    "handle": {
+      "es": "buzos5"
+    },
+    "description": {
+      "es": "Buzos de Supreme disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  },
+  {
+    "id": 38830597,
+    "parent": 38830584,
+    "subcategories": [],
+    "google_shopping_category": "",
+    "created_at": "2026-05-17T02:27:53+00:00",
+    "updated_at": "2026-05-17T02:27:53+00:00",
+    "visibility": "visible",
+    "visibility_updated_at": null,
+    "name": {
+      "es": "Remeras"
+    },
+    "handle": {
+      "es": "remeras3"
+    },
+    "description": {
+      "es": "Remeras de Supreme disponibles en MIAMI_IMPORT."
+    },
+    "seo_title": {
+      "es": ""
+    },
+    "seo_description": {
+      "es": ""
+    }
+  }
+]

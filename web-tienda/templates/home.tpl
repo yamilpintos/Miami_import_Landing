@@ -1,0 +1,315 @@
+{# ============================================================
+   MIAMI_IMPORT — Home wrapper (v2 copy: trazabilidad de origen)
+   Concepto rector: importación con documentación · escala única ·
+   ruta Italia ↔ Miami ↔ Buenos Aires.
+   ============================================================ #}
+
+{# Aviso de precios USD — temporalmente deshabilitado #}
+{# include 'snipplets/miami-price-notice.tpl' #}
+
+{# ============= HERO ============= #}
+<section class="miami-hero" data-miami-reveal>
+  {# Lluvia de marcas — solo en los costados, deja calle vacía en el centro para el título #}
+  <div class="miami-hero__rain" aria-hidden="true">
+    {# IZQUIERDA — 0-22% del ancho #}
+    <span class="miami-rain-word"             style="--rx: 4%;  --rdy: 0s;   --rd: 26s">OFF-WHITE</span>
+    <span class="miami-rain-word miami-rain-word--ghost" style="--rx: 10%; --rdy: 9s;   --rd: 30s">DIESEL</span>
+    <span class="miami-rain-word miami-rain-word--bold"  style="--rx: 16%; --rdy: 4s;   --rd: 22s">BALENCIAGA</span>
+    <span class="miami-rain-word miami-rain-word--ghost" style="--rx: 21%; --rdy: 14s;  --rd: 28s">AMIRI</span>
+    <span class="miami-rain-word"             style="--rx: 8%;  --rdy: 17s;  --rd: 24s">PALM ANGELS</span>
+    <span class="miami-rain-word miami-rain-word--ghost" style="--rx: 14%; --rdy: 22s;  --rd: 32s">PRADA</span>
+
+    {# DERECHA — 78-100% del ancho #}
+    <span class="miami-rain-word miami-rain-word--bold"  style="--rx: 80%; --rdy: 6s;   --rd: 23s">HUGO BOSS</span>
+    <span class="miami-rain-word"             style="--rx: 86%; --rdy: 11s;  --rd: 26s">EMPORIO ARMANI</span>
+    <span class="miami-rain-word miami-rain-word--ghost" style="--rx: 92%; --rdy: 2s;   --rd: 30s">KENZO</span>
+    <span class="miami-rain-word"             style="--rx: 78%; --rdy: 19s;  --rd: 22s">BALMAIN</span>
+    <span class="miami-rain-word miami-rain-word--ghost" style="--rx: 88%; --rdy: 25s;  --rd: 28s">CALVIN KLEIN</span>
+    <span class="miami-rain-word miami-rain-word--bold"  style="--rx: 95%; --rdy: 13s;  --rd: 24s">DIOR</span>
+  </div>
+  <div class="miami-hero__inner">
+    <div class="miami-hero__logo-wrap">
+      <img class="miami-hero__logo"
+           src="{{ 'images/miami-logo-v4.webp' | static_url }}"
+           alt="MIAMI IMPORT — Luxury Milano"
+           loading="eager" />
+    </div>
+    <h1 class="miami-hero__title miami-hero__title--with-logo">
+      Diseñado<br/>
+      <span class="miami-stroke">para destacar.</span>
+    </h1>
+    <p class="miami-hero__sub">Importación con licencia de origen</p>
+    <div class="miami-hero__actions">
+      <a href="{{ store.products_url }}" class="miami-btn miami-btn--primary">VER CATÁLOGO →</a>
+      <a href="https://wa.me/5491162321391?text=Hola%2C%20quiero%20abrir%20un%20pedido%20puntual." target="_blank" rel="noopener" class="miami-btn miami-btn--ghost">PEDIDO PUNTUAL</a>
+    </div>
+    <div class="miami-hero__chips">
+      <span>UNIDADES EXCLUSIVAS</span>
+      <span class="miami-hero__chip-dot"></span>
+      <span>REPOSICIÓN POR PEDIDO</span>
+      <span class="miami-hero__chip-dot"></span>
+      <span>DOC. DE ORIGEN</span>
+    </div>
+  </div>
+</section>
+
+{# ============= TICKER ============= #}
+<div class="miami-ticker">
+  <div class="miami-ticker__track" data-miami-marquee>
+    <span>MIAMI · MILANO · BUENOS AIRES</span>
+    <span>—</span>
+    <span>TRAZABILIDAD VERIFICADA</span>
+    <span>—</span>
+    <span>UNIDADES EXCLUSIVAS</span>
+    <span>—</span>
+    <span>REPOSICIÓN POR PEDIDO</span>
+    <span>—</span>
+    <span>DOC. DE ORIGEN</span>
+    <span>—</span>
+    <span>RESPUESTA EN MINUTOS</span>
+    <span>—</span>
+  </div>
+</div>
+
+{# ============= TRILOGIA · CAPSULA DIESEL (scroll-pinned 3D) ============= #}
+{% include "snipplets/miami-trilogy.tpl" %}
+
+{# ============= TRUST STRIP ============= #}
+<section class="miami-trust" data-miami-reveal>
+  <div class="miami-trust__grid">
+    <div class="miami-trust__item">
+      <strong>Doc. de origen</strong>
+      <span>Comprobante con cada pieza</span>
+    </div>
+    <div class="miami-trust__item">
+      <strong>Edición chica</strong>
+      <span>Pocas piezas. Reposición por pedido.</span>
+    </div>
+    <div class="miami-trust__item">
+      <strong>Atención 1:1</strong>
+      <span>WhatsApp directo, sin formularios</span>
+    </div>
+    <div class="miami-trust__item">
+      <strong>Ruta verificada</strong>
+      <span>Italia · Buenos Aires</span>
+    </div>
+  </div>
+</section>
+
+{# ============= EDITORIAL SPLIT 1 — Foto AC Milan con overlay + dossier negro/dorado ============= #}
+<section class="miami-split miami-split--dark" data-miami-reveal>
+  <a href="/productos/off-white-buzo-off-white-ac-milan-negro" class="miami-split__media miami-split__media--photo">
+    <img class="miami-split__img" src="https://dcdn-us.mitiendanube.com/stores/007/575/582/products/buzo-off-white-ac-milan-negro-s_m_xl_2xl-550usd-f1c82f2b553c61666c17776697839906-1024-1024.jpg" alt="Buzo Off-White AC Milan Negro" loading="lazy" />
+    <div class="miami-split__media-overlay">
+      <div class="miami-split__media-tag">REF / 001 · OFF-WHITE</div>
+      <div class="miami-split__media-brand">AC MILAN<br/>EDITION</div>
+      <div class="miami-split__media-foot">VER PIEZA →</div>
+    </div>
+  </a>
+  <div class="miami-split__content miami-split__content--dark">
+    <div class="miami-eyebrow">DOSSIER · 01</div>
+    <h2 class="miami-split__quote">Marcas top, originales,<br/>importadas.</h2>
+    <p class="miami-split__copy">Importamos las prendas directamente de Italia y Miami. Cada una es original, con comprobante de procedencia y edición limitada.</p>
+    <div class="miami-split__actions">
+      <a href="{{ store.products_url }}" class="miami-btn miami-btn--gold">VER CATÁLOGO COMPLETO →</a>
+    </div>
+  </div>
+</section>
+
+{# ============= BRAND TILES ============= #}
+<section class="miami-section miami-section--brands-float" data-miami-reveal>
+  <div class="miami-section__head miami-section__head--seal">
+    <img class="miami-section__seal" src="{{ 'images/miami-logo-v4.webp' | static_url }}" alt="" loading="lazy" />
+    <div class="miami-section__head-text">
+      <div class="miami-eyebrow">10 CASAS · CATÁLOGO ROTATIVO</div>
+      <h2 class="miami-section__title">Origen verificado</h2>
+      <p class="miami-section__sub">Cada marca, con su documentación.</p>
+    </div>
+    <a href="{{ store.products_url }}" class="miami-section__link">Ver todo →</a>
+  </div>
+
+  <div class="miami-brand-grid miami-brand-grid--float">
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/off-white">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-off-white-cut.webp' | static_url }}" alt="OFF-WHITE" loading="lazy"/>
+      <span class="miami-brand-tile__no">01</span>
+      <span class="miami-brand-tile__name">OFF-WHITE</span>
+      <span class="miami-brand-tile__cta">Explorar →</span>
+    </a>
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/balenciaga">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-balenciaga-cut.webp' | static_url }}" alt="BALENCIAGA" loading="lazy"/>
+      <span class="miami-brand-tile__no">02</span>
+      <span class="miami-brand-tile__name">BALENCIAGA</span>
+      <span class="miami-brand-tile__cta">Pedir a importación →</span>
+    </a>
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/diesel">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-diesel-cut-v2.webp' | static_url }}" alt="DIESEL" loading="lazy"/>
+      <span class="miami-brand-tile__no">03</span>
+      <span class="miami-brand-tile__name">DIESEL</span>
+      <span class="miami-brand-tile__cta">Explorar →</span>
+    </a>
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/amiri">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-amiri-cut.webp' | static_url }}" alt="AMIRI" loading="lazy"/>
+      <span class="miami-brand-tile__no">04</span>
+      <span class="miami-brand-tile__name">AMIRI</span>
+      <span class="miami-brand-tile__cta">Pedir a importación →</span>
+    </a>
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/hugo-boss">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-hugo-boss-cut.webp' | static_url }}" alt="HUGO BOSS" loading="lazy"/>
+      <span class="miami-brand-tile__no">05</span>
+      <span class="miami-brand-tile__name">HUGO BOSS</span>
+      <span class="miami-brand-tile__cta">Explorar →</span>
+    </a>
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/emporio-armani">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-emporio-armani-cut.webp' | static_url }}" alt="EMPORIO ARMANI" loading="lazy"/>
+      <span class="miami-brand-tile__no">06</span>
+      <span class="miami-brand-tile__name">EMPORIO ARMANI</span>
+      <span class="miami-brand-tile__cta">Explorar →</span>
+    </a>
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/michael-kors">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-michael-kors-cut-v2.webp' | static_url }}" alt="MICHAEL KORS" loading="lazy"/>
+      <span class="miami-brand-tile__no">07</span>
+      <span class="miami-brand-tile__name">MICHAEL KORS</span>
+      <span class="miami-brand-tile__cta">Explorar →</span>
+    </a>
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/calvin-klein">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-calvin-klein-cut.webp' | static_url }}" alt="CALVIN KLEIN" loading="lazy"/>
+      <span class="miami-brand-tile__no">08</span>
+      <span class="miami-brand-tile__name">CALVIN KLEIN</span>
+      <span class="miami-brand-tile__cta">Explorar →</span>
+    </a>
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/palm-angels">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-palm-angels-cut.webp' | static_url }}" alt="PALM ANGELS" loading="lazy"/>
+      <span class="miami-brand-tile__no">09</span>
+      <span class="miami-brand-tile__name">PALM ANGELS</span>
+      <span class="miami-brand-tile__cta">Explorar →</span>
+    </a>
+    <a class="miami-brand-tile miami-brand-tile--float" href="/categorias/balmain">
+      <img class="miami-brand-tile__img" src="{{ 'images/category-balmain-cut.webp' | static_url }}" alt="BALMAIN" loading="lazy"/>
+      <span class="miami-brand-tile__no">10</span>
+      <span class="miami-brand-tile__name">BALMAIN</span>
+      <span class="miami-brand-tile__cta">Explorar →</span>
+    </a>
+  </div>
+</section>
+
+{# ============= PRODUCTOS DESTACADOS (si hay) ============= #}
+{% if sections.primary.products %}
+<section class="miami-section miami-section--products-dark" data-miami-reveal>
+  <div class="miami-section__head miami-section__head--seal">
+    <img class="miami-section__seal" src="{{ 'images/miami-logo-v4.webp' | static_url }}" alt="" loading="lazy" />
+    <div class="miami-section__head-text">
+      <div class="miami-eyebrow">PIEZAS EN STOCK</div>
+      <h2 class="miami-section__title">Disponibles ahora</h2>
+    </div>
+    <a href="{{ store.products_url }}" class="miami-section__link">Ver todo →</a>
+  </div>
+  <div class="miami-products-grid">
+    {% for product in sections.primary.products %}
+      {% include 'snipplets/product-item.tpl' %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ============= LOOKBOOK — 2 mundos de la marca ============= #}
+<section class="miami-lookbook" data-miami-reveal>
+  <a href="/categorias/off-white" class="miami-lookbook__tile miami-lookbook__tile--cinematic" data-miami-cinematic>
+    <div class="miami-lookbook__media">
+      <img class="miami-lookbook__img" src="{{ 'images/lenguaje-de-calle.jpg' | static_url }}" alt="Milano luxury district — Lenguaje de calle" loading="lazy" />
+    </div>
+    <div class="miami-lookbook__grain" aria-hidden="true"></div>
+    <div class="miami-lookbook__haze" aria-hidden="true"></div>
+    <div class="miami-lookbook__vignette" aria-hidden="true"></div>
+    <div class="miami-lookbook__overlay miami-lookbook__overlay--dark">
+      <div class="miami-lookbook__no" data-cinematic-reveal>MILANO · CAPÍTULO 02</div>
+      <div class="miami-lookbook__title" data-cinematic-reveal>Lenguaje<br/>de calle.</div>
+      <div class="miami-lookbook__sub" data-cinematic-reveal>Off-White · Palm Angels · Balenciaga</div>
+      <div class="miami-lookbook__cta miami-lookbook__cta--glass" data-cinematic-reveal>
+        <span>EXPLORAR CAPÍTULO</span>
+        <span class="miami-lookbook__cta-arrow">→</span>
+      </div>
+    </div>
+  </a>
+  <a href="/productos/supreme-buzo-supreme-camuflado-over" class="miami-lookbook__tile">
+    <img class="miami-lookbook__img" src="{{ 'images/street-de-lujo.jpg' | static_url }}" alt="Buzo Supreme Camuflado" loading="lazy" />
+    <div class="miami-lookbook__overlay miami-lookbook__overlay--dark">
+      <div class="miami-lookbook__no">CAPÍTULO 03</div>
+      <div class="miami-lookbook__title">Street<br/>de lujo.</div>
+      <div class="miami-lookbook__sub">Supreme · Off-White · Palm Angels</div>
+      <div class="miami-lookbook__cta">EXPLORAR CAPÍTULO →</div>
+    </div>
+  </a>
+</section>
+
+{# ============= EDITORIAL SPLIT 2 — Inverso EA7 negro/dorado ============= #}
+<section class="miami-split miami-split--reverse miami-split--dark" data-miami-reveal>
+  <div class="miami-split__content miami-split__content--dark">
+    <img class="miami-section__seal miami-split__seal" src="{{ 'images/miami-logo-v4.webp' | static_url }}" alt="" loading="lazy" />
+    <div class="miami-eyebrow">DOSSIER · 02</div>
+    <h2 class="miami-split__quote">Lo que ves<br/>está en mano.<br/>El resto, lo<br/>traemos.</h2>
+    <p class="miami-split__copy">Cada referencia llega en edición chica. Si el talle o el modelo que querés ya no está en plaza, lo importamos a pedido en 10 a 15 días desde Italia o Miami. Lo bueno también vuelve.</p>
+    <div class="miami-split__actions">
+      <a href="https://wa.me/5491162321391?text=Hola%2C%20quiero%20pedir%20una%20pieza%20que%20no%20est%C3%A1%20en%20stock." target="_blank" rel="noopener" class="miami-btn miami-btn--gold">PEDIR REPOSICIÓN →</a>
+    </div>
+  </div>
+  <a href="/categorias/balmain" class="miami-split__media miami-split__media--photo">
+    <img class="miami-split__img" src="{{ 'images/dossier-02-balmain.webp' | static_url }}" alt="Buzo Balmain Paris — Miami Import" loading="lazy" />
+    <div class="miami-split__media-overlay">
+      <div class="miami-split__media-tag">REF / 002 · BALMAIN</div>
+      <div class="miami-split__media-brand">EN STOCK<br/>+ A PEDIDO</div>
+      <div class="miami-split__media-foot">VER CATEGORÍA →</div>
+    </div>
+  </a>
+</section>
+
+{# ============= STATUS QUOTE ============= #}
+<section class="miami-status" data-miami-reveal>
+  <div class="miami-status__quote">
+    Algunos compran por marca.<br/>Otros, por procedencia.
+  </div>
+  <div class="miami-status__foot">— SELECCIÓN DE ORIGEN —</div>
+</section>
+
+{# ============= MARQUEE marcas ============= #}
+<div class="miami-marquee">
+  <div class="miami-marquee__track" data-miami-marquee>
+    <span>OFF-WHITE</span><span class="miami-dot"></span>
+    <span>BALENCIAGA</span><span class="miami-dot"></span>
+    <span>DIESEL</span><span class="miami-dot"></span>
+    <span>AMIRI</span><span class="miami-dot"></span>
+    <span>HUGO BOSS</span><span class="miami-dot"></span>
+    <span>EMPORIO ARMANI</span><span class="miami-dot"></span>
+    <span>MICHAEL KORS</span><span class="miami-dot"></span>
+    <span>CALVIN KLEIN</span><span class="miami-dot"></span>
+    <span>ESSENTIALS</span><span class="miami-dot"></span>
+    <span>PALM ANGELS</span><span class="miami-dot"></span>
+    <span>BALMAIN</span><span class="miami-dot"></span>
+    <span>KENZO</span><span class="miami-dot"></span>
+  </div>
+</div>
+
+{# ============= EDITORIAL — Procedencia ============= #}
+<section class="miami-section miami-section--soft" data-miami-reveal>
+  <div class="miami-editorial">
+    <div class="miami-eyebrow">DOSSIER · 03 · PROCEDENCIA</div>
+    <h2>De plaza cerrada a tu casa, sin escalas.</h2>
+    <p>
+      Importamos directo desde Milano, Miami y plazas cerradas de Europa. Cada pieza viaja con su comprobante y trazabilidad de origen. Atención por WhatsApp en horario comercial. Cambio garantizado por talle dentro de las 48 hs de recibido.
+    </p>
+  </div>
+</section>
+
+{# ============= CTA FINAL — Pedido puntual ============= #}
+<section class="miami-cta" data-miami-reveal>
+  <div class="miami-eyebrow" style="margin-bottom:24px">PEDIDO PUNTUAL</div>
+  <h2 class="miami-cta__title">¿Buscás un modelo<br/>que no está en la web?</h2>
+  <p class="miami-cta__sub">Lo importamos en 10 a 15 días desde Italia o Miami.<br/>Reservás con seña del 50%. Te confirmamos por WhatsApp.</p>
+  <a href="https://wa.me/5491162321391?text=Hola%2C%20quiero%20abrir%20un%20pedido%20puntual.%20Modelo%20que%20busco%3A%20" target="_blank" rel="noopener" class="miami-btn miami-btn--primary miami-btn--xl">
+    ABRIR PEDIDO POR WHATSAPP →
+  </a>
+</section>
+
+{# ============= POPUP nativo ============= #}
+{% if settings.home_promotional_popup and ("home_popup_image.jpg" | has_custom_image or settings.home_popup_title or settings.home_popup_txt or settings.home_news_box or (settings.home_popup_btn and settings.home_popup_url)) %}
+  {% include 'snipplets/home/home-popup.tpl' %}
+{% endif %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Tu carrito — {{ STORE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="mi-container" style="padding-top:48px;min-height:60vh">
+  <h1 class="mi-section-title" style="margin-top:24px">Tu carrito</h1>
+
+  <div id="mi-cart-root" data-empty="{{ 'true' if not cart['items'] else 'false' }}">
+    {% if not cart['items'] %}
+      <p style="text-align:center;color:rgba(245,243,238,.5);padding:40px 0">
+        Tu carrito está vacío. <a href="/productos" style="color:var(--miami-gold,#b99b63)">Ver catálogo →</a></p>
+    {% else %}
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:48px;align-items:start" class="mi-cart-layout">
+      <div id="mi-cart-items">
+        {% for it in cart['items'] %}
+        <div class="mi-cart-row" data-vid="{{ it.variant_id }}"
+          style="display:grid;grid-template-columns:90px 1fr auto;gap:18px;padding:20px 0;border-bottom:1px solid rgba(255,255,255,.08)">
+          <a href="/productos/{{ it.handle }}/"><img src="{{ it.image }}" alt="{{ it.product_name }}"
+            style="width:90px;height:115px;object-fit:cover;border-radius:8px;background:#111"/></a>
+          <div>
+            <div style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--miami-gold,#b99b63)">{{ it.brand }}</div>
+            <div style="margin:6px 0;font-size:15px">{{ it.product_name }}</div>
+            {% if it.value %}<div style="font-size:12px;color:rgba(245,243,238,.5)">Talle: {{ it.value }}</div>{% endif %}
+            <div style="display:inline-flex;align-items:center;gap:12px;margin-top:12px;border:1px solid rgba(245,243,238,.2);border-radius:999px;padding:4px 6px">
+              <button class="mi-qty" data-vid="{{ it.variant_id }}" data-delta="-1" style="background:none;border:0;color:#fff;cursor:pointer;font-size:18px;width:24px">−</button>
+              <span data-qty>{{ it.quantity }}</span>
+              <button class="mi-qty" data-vid="{{ it.variant_id }}" data-delta="1" style="background:none;border:0;color:#fff;cursor:pointer;font-size:18px;width:24px">+</button>
+            </div>
+            <button class="mi-remove" data-vid="{{ it.variant_id }}"
+              style="display:block;margin-top:12px;background:none;border:0;color:rgba(245,243,238,.4);cursor:pointer;font-size:12px;letter-spacing:.05em">Quitar</button>
+          </div>
+          <div style="text-align:right;font-weight:600" data-line>{{ it.line_total | ars }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <aside style="background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:28px;position:sticky;top:100px">
+        <h3 style="margin:0 0 20px;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--miami-gold,#b99b63)">Resumen</h3>
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px;color:rgba(245,243,238,.7)">
+          <span>Subtotal</span><span data-subtotal>{{ cart['subtotal'] | ars }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:20px;font-size:12px;color:rgba(245,243,238,.4)">
+          <span>Envío</span><span>Se calcula al finalizar</span>
+        </div>
+        <a href="/checkout" class="miami-btn miami-btn--primary" style="display:block;text-align:center;width:100%;padding:16px;
+          background:var(--miami-gold,#b99b63);color:#0a0a0a;border-radius:999px;letter-spacing:.2em;text-transform:uppercase;font-size:13px;font-weight:700">
+          Finalizar compra →</a>
+        <a href="/productos" style="display:block;text-align:center;margin-top:14px;color:rgba(245,243,238,.5);font-size:12px;letter-spacing:.1em">Seguir comprando</a>
+      </aside>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function money(n){return '$ ' + Math.round(n).toLocaleString('es-AR');}
+  async function cartApi(path, body){
+    const r = await fetch('/api/cart'+path, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok) throw new Error('cart error');
+    return r.json();
+  }
+  function render(summary){
+    if(!summary.items.length){ location.reload(); return; }
+    document.querySelectorAll('.mi-cart-row').forEach(function(row){
+      const it = summary.items.find(x=>String(x.variant_id)===row.dataset.vid);
+      if(!it){ row.remove(); return; }
+      row.querySelector('[data-qty]').textContent = it.quantity;
+      row.querySelector('[data-line]').textContent = money(parseFloat(it.line_total));
+    });
+    const st = document.querySelector('[data-subtotal]'); if(st) st.textContent = money(summary.subtotal_raw);
+    const badge = document.querySelector('[data-cart-count]'); if(badge) badge.textContent = summary.count;
+  }
+  document.querySelectorAll('.mi-qty').forEach(function(b){
+    b.addEventListener('click', async function(){
+      const row=b.closest('.mi-cart-row'); const q=parseInt(row.querySelector('[data-qty]').textContent)+parseInt(b.dataset.delta);
+      try{ render(await cartApi('/update',{variant_id:b.dataset.vid,quantity:q})); }catch(e){}
+    });
+  });
+  document.querySelectorAll('.mi-remove').forEach(function(b){
+    b.addEventListener('click', async function(){
+      try{ render(await cartApi('/remove',{variant_id:b.dataset.vid})); }catch(e){}
+    });
+  });
+</script>
+{% endblock %}

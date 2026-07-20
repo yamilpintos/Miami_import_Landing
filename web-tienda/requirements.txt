@@ -1,0 +1,21 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+jinja2>=3.1
+python-multipart>=0.0.9
+requests>=2.31          # Google OAuth + Supabase Storage
+
+# --- Base de datos (la MISMA que panel-control) ---
+SQLAlchemy>=2.0
+psycopg2-binary>=2.9
+
+# --- Seguridad / auth ---
+argon2-cffi>=23.1          # hashing de contraseñas (Argon2id, OWASP)
+bcrypt>=4.1                # solo para verificar hashes viejos (legacy)
+PyJWT>=2.8
+email-validator>=2.1
+
+# --- Pagos ---
+stripe>=8.0
+
+# --- Build de CSS (compilar .scss -> .css una vez) ---
+libsass>=0.22
