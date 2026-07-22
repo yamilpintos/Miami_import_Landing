@@ -6,9 +6,16 @@
 <title>Stock Manager · MIAMI_IMPORT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/style.css?v=20260708d">
 </head>
 <body>
+
+<!-- Barra superior (solo en celular): hamburguesa + marca -->
+<header class="mobile-topbar">
+  <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Abrir menú">☰</button>
+  <span class="mobile-topbar-brand">MIAMI_IMPORT</span>
+</header>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
 
 <aside class="sidebar">
   <div class="brand">
@@ -20,51 +27,56 @@
   </div>
 
   <nav class="nav">
-    <button class="nav-item active" data-tab="dashboard">
+    <a class="nav-item active" href="#dashboard" data-tab="dashboard">
       <span class="nav-icon">▮</span>
       <span>Dashboard</span>
-    </button>
-    <button class="nav-item" data-tab="productos">
+    </a>
+    <a class="nav-item" href="#productos" data-tab="productos">
       <span class="nav-icon">▦</span>
       <span>Productos</span>
-    </button>
-    <button class="nav-item" data-tab="alta">
+    </a>
+    <a class="nav-item" href="#alta" data-tab="alta">
       <span class="nav-icon">+</span>
       <span>Nuevo producto</span>
-    </button>
-    <button class="nav-item" data-tab="pedidos">
+    </a>
+    <a class="nav-item" href="#catalogo-entrante" data-tab="catalogo-entrante">
+      <span class="nav-icon">⇲</span>
+      <span>Catálogo entrante</span>
+    </a>
+    <a class="nav-item" href="#pedidos" data-tab="pedidos">
       <span class="nav-icon">▢</span>
       <span>Pedidos</span>
-    </button>
-    <button class="nav-item" data-tab="estadisticas">
+    </a>
+    <a class="nav-item" href="#estadisticas" data-tab="estadisticas">
       <span class="nav-icon">▲</span>
       <span>Estadísticas</span>
-    </button>
-    <button class="nav-item" data-tab="precios-usd">
+    </a>
+    <a class="nav-item" href="#precios-usd" data-tab="precios-usd">
       <span class="nav-icon">$</span>
       <span>Precios USD</span>
-    </button>
-    <button class="nav-item" data-tab="whatsapp">
+    </a>
+    <a class="nav-item" href="#whatsapp" data-tab="whatsapp">
       <span class="nav-icon">⌘</span>
       <span>WhatsApp</span>
-    </button>
-    <button class="nav-item" data-tab="bot-mia">
+    </a>
+    <a class="nav-item" href="#bot-mia" data-tab="bot-mia">
       <span class="nav-icon">⌬</span>
       <span>Bot Mía</span>
-    </button>
-    <button class="nav-item" data-tab="legales">
+    </a>
+    <a class="nav-item" href="#legales" data-tab="legales">
       <span class="nav-icon">📄</span>
       <span>Páginas legales</span>
-    </button>
-    <button class="nav-item" data-tab="acciones">
+    </a>
+    <a class="nav-item" href="#acciones" data-tab="acciones">
       <span class="nav-icon">⚡</span>
       <span>Acciones</span>
-    </button>
+    </a>
   </nav>
 
   <div class="sidebar-footer">
     <button id="btn-export" class="btn-secondary">Descargar Excel completo</button>
-    <button id="btn-logout" class="link-tn" style="background:none;border:0;cursor:pointer">Cerrar sesión ↗</button>
+    <a href="#" id="link-tienda" target="_blank" class="link-tn">Ver mi tienda ↗</a>
+    <button id="btn-logout" class="btn-secondary" style="margin-top:8px">Cerrar sesión</button>
   </div>
 </aside>
 
@@ -138,7 +150,7 @@
   <section class="tab" data-tab="alta">
     <header class="page-header">
       <div>
-        <div class="eyebrow">Subir a Tiendanube</div>
+        <div class="eyebrow">Publicar en la tienda</div>
         <h1>Nuevo producto</h1>
       </div>
     </header>
@@ -190,16 +202,44 @@
       <label class="file-drop">
         Imágenes del producto (podés seleccionar varias)
         <input name="images" type="file" multiple accept="image/*" />
-        <span class="file-hint">Arrastrá o seleccioná — primera imagen = portada</span>
+        <span class="file-hint">Podés elegir varias y seguir sumando (se acumulan) — primera = portada · ↻ girar · × quitar</span>
       </label>
 
+      <div id="alta-previews" class="alta-previews"></div>
+
       <div class="form-actions">
-        <button type="submit" class="btn-primary">Crear y subir a Tiendanube</button>
+        <button type="submit" class="btn-primary">Crear y publicar</button>
         <span id="alta-status"></span>
       </div>
     </form>
 
     <div id="alta-result" class="result-card hidden"></div>
+  </section>
+
+  <!-- ========= CATÁLOGO ENTRANTE ========= -->
+  <section class="tab" data-tab="catalogo-entrante">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Stock nuevo · pendiente de cargar</div>
+        <h1>Catálogo entrante</h1>
+      </div>
+      <button id="btn-refresh-entrante" class="btn-ghost">Actualizar</button>
+    </header>
+
+    <div class="panel">
+      <p><b>1.</b> Elegí las fotos del stock nuevo y subilas acá. <b>2.</b> Cada una aparece como tarjeta: el <b>talle</b> y la <b>marca</b> se deducen del nombre del archivo — revisalos, completá <b>nombre</b> y <b>precio</b>, y tocá <b>Publicar en la tienda</b>.</p>
+      <p style="color:var(--ink-mute);font-size:13px;margin-top:6px;">Conviene nombrar los archivos así: <code>p07 - Off-White buzo - talle S-M-L.jpeg</code>. Las que dicen <b>REVISAR marca</b> no tienen logo claro: poné la marca a mano. Cotización USD→ARS actual: <b id="entrante-rate">—</b>.</p>
+
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input type="file" id="entrante-files" accept="image/*" multiple hidden />
+        <button type="button" id="btn-entrante-pick" class="btn-primary">Elegir fotos…</button>
+        <span id="entrante-upload-status" style="color:var(--ink-mute);font-size:13px"></span>
+      </div>
+    </div>
+
+    <div id="catalogo-entrante-list" class="grid-entrante">
+      <div class="loading">Cargando…</div>
+    </div>
   </section>
 
   <!-- ========= PEDIDOS ========= -->
@@ -252,7 +292,7 @@
 
     <div class="panel">
       <h2>Cómo funciona</h2>
-      <p>Vos manejás precios en <b>USD</b> internamente (que es lo que realmente cuesta el producto). El cliente en la tienda <b>paga en ARS</b> (ARS = USD × tipo de cambio). Cuando cambia el dólar, ajustás la cotización acá y con un click se recalculan TODOS los precios ARS en Tiendanube.</p>
+      <p>Vos manejás precios en <b>USD</b> internamente (que es lo que realmente cuesta el producto). El cliente en la tienda <b>paga en ARS</b> (ARS = USD × tipo de cambio). Cuando cambia el dólar, ajustás la cotización acá y con un click se recalculan TODOS los precios ARS de la tienda.</p>
     </div>
 
     <div class="form-card">
@@ -281,8 +321,8 @@
         </button>
       </div>
       <p style="color:#888;font-size:13px;margin-top:14px;">
-        <b>Inicializar</b>: la primera vez, toma los precios ARS actuales de Tiendanube y los divide por la cotización para guardar el equivalente USD.<br/>
-        <b>Recalcular</b>: con tus USD prices guardados y la cotización actual, actualiza los precios ARS en TODAS las variantes de Tiendanube.
+        <b>Inicializar</b>: la primera vez, toma los precios ARS actuales y los divide por la cotización para guardar el equivalente USD.<br/>
+        <b>Recalcular</b>: con tus USD prices guardados y la cotización actual, actualiza los precios ARS en TODAS las variantes de la tienda.
       </p>
       <div id="usd-action-status" style="margin-top:16px;font-size:13px;"></div>
     </div>
@@ -361,7 +401,7 @@
     </header>
 
     <div class="panel">
-      <p>Estos HTMLs los pegás manualmente en <b>Admin Tiendanube → Mi tienda → Páginas</b>. Click en "Ver y copiar" para verlos y copiarlos al portapapeles.</p>
+      <p>Estos HTMLs son las páginas legales de la tienda. Click en "Ver y copiar" para verlos y copiarlos al portapapeles.</p>
     </div>
 
     <div id="legal-pages-list">
@@ -408,6 +448,6 @@ python upload_theme_to_tiendanube.py</pre>
 <!-- Toast -->
 <div id="toast" class="toast hidden"></div>
 
-<script src="/static/js/app.js"></script>
+<script src="/static/js/app.js?v=20260708d"></script>
 </body>
 </html>

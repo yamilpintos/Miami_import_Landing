@@ -12,10 +12,11 @@ import re
 import secrets
 import unicodedata
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import List, Optional
 
+import requests
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func
@@ -28,6 +29,7 @@ from core.db import get_db
 from core.models import (
     Category, Order, Product, ProductImage, Variant, Setting,
 )
+from core.sanitize import clean_description
 from serializers import order_to_tn, product_to_tn
 
 # Todo el panel exige sesión de admin.
@@ -109,6 +111,22 @@ def current_usd_rate(db: Session) -> float:
 # --------------------------------------------------------------------------- #
 # Productos
 # --------------------------------------------------------------------------- #
+@router.get("/store")
+def store_info(db: Session = Depends(get_db)):
+    """Datos de la tienda para el frontend del panel.
+
+    El panel viejo tenía la URL de Tiendanube hardcodeada; ahora sale de la
+    config para que los links apunten a NUESTRA tienda.
+    """
+    base = settings.STORE_BASE_URL.rstrip("/")
+    return {
+        "name": "MIAMI IMPORT",
+        "url": base,
+        "product_url_base": f"{base}/productos/",
+        "usd_rate": current_usd_rate(db),
+    }
+
+
 @router.get("/products")
 def list_products(q: Optional[str] = None, page: int = 1, per_page: int = 200,
                   db: Session = Depends(get_db)):
@@ -131,6 +149,141 @@ def get_product(pid: int, db: Session = Depends(get_db)):
     if not p:
         raise HTTPException(404, "Producto no encontrado")
     return product_to_tn(p)
+
+
+@router.put("/products/{pid}")
+def update_product(pid: int, body: dict, db: Session = Depends(get_db)):
+    """Actualiza datos del producto (nombre, marca, descripción, publicado)."""
+    p = db.get(Product, pid)
+    if not p:
+        raise HTTPException(404, "Producto no encontrado")
+
+    if body.get("name") is not None:
+        nombre = str(body["name"]).strip()[:500]
+        if not nombre:
+            raise HTTPException(400, "El nombre no puede quedar vacío")
+        p.name = nombre
+    if "brand" in body:
+        p.brand = str(body.get("brand") or "").strip()[:255] or None
+    if "description" in body:
+        # Se renderiza con `| safe` en la tienda: sanitizar siempre.
+        p.description = clean_description(str(body.get("description") or ""))
+    if "published" in body:
+        p.published = bool(body["published"])
+
+    db.commit()
+    db.refresh(p)
+    return product_to_tn(p)
+
+
+@router.post("/products/{pid}/variants")
+def add_variant(pid: int, body: dict, db: Session = Depends(get_db)):
+    """Agrega un talle nuevo a un producto existente.
+
+    Se crea con stock 0 por defecto: solo deja la opción disponible, sin tocar
+    las variantes que el producto ya tiene cargadas.
+    """
+    p = db.get(Product, pid)
+    if not p:
+        raise HTTPException(404, "Producto no encontrado")
+
+    talle = str(body.get("talle") or body.get("value") or "").strip().upper()[:255]
+    if not talle:
+        raise HTTPException(400, "Falta el talle")
+    if any((v.value or "").strip().upper() == talle for v in p.variants):
+        raise HTTPException(409, f"El talle {talle} ya existe en este producto")
+
+    try:
+        stock = max(0, int(body.get("stock", 0) or 0))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Stock inválido")
+
+    # Precio: el del body, o el de la primera variante existente.
+    price = None
+    if body.get("price") not in (None, ""):
+        try:
+            price = Decimal(str(body["price"]))
+        except (InvalidOperation, TypeError, ValueError):
+            raise HTTPException(400, "Precio inválido")
+    base = p.variants[0] if p.variants else None
+    if price is None:
+        price = base.price if base else Decimal("0")
+
+    v = Variant(
+        product_id=p.id, value=talle, stock=stock, price=price,
+        usd_price=(base.usd_price if base else None),
+        compare_at_price=(base.compare_at_price if base else None),
+        position=(max((x.position or 0) for x in p.variants) + 1) if p.variants else 1,
+        visible=True,
+    )
+    db.add(v)
+    db.commit()
+    db.refresh(p)
+    return product_to_tn(p)
+
+
+@router.post("/products/{pid}/images/{image_id}/rotate")
+def rotate_product_image(pid: int, image_id: int, body: dict, db: Session = Depends(get_db)):
+    """Rota una imagen ya subida y la reemplaza en el mismo lugar.
+
+    A diferencia del panel viejo (que tenía que borrar y resubir a Tiendanube),
+    acá se reescribe el archivo en nuestro bucket y se conserva la posición.
+    """
+    p = db.get(Product, pid)
+    img = db.get(ProductImage, image_id)
+    if not p or not img or img.product_id != pid:
+        raise HTTPException(404, "Imagen no encontrada")
+    try:
+        degrees = int(body.get("degrees", 0) or 0) % 360
+    except (TypeError, ValueError):
+        degrees = 0
+    if degrees == 0:
+        return {"ok": True, "unchanged": True}
+    if not storage.is_enabled():
+        raise HTTPException(503, "Storage no configurado")
+
+    try:
+        from PIL import Image
+    except ImportError:
+        raise HTTPException(503, "Falta Pillow para rotar imágenes")
+
+    # Descargar la actual, rotar y volver a subir con nombre nuevo.
+    try:
+        resp = requests.get(img.url, timeout=30)
+        resp.raise_for_status()
+        src = Image.open(io.BytesIO(resp.content))
+        fmt = (src.format or "JPEG").upper()
+        if fmt not in ("JPEG", "PNG", "WEBP"):
+            fmt = "JPEG"
+        # expand=True para que no recorte al rotar 90/270.
+        out = src.rotate(-degrees, expand=True)
+        if fmt == "JPEG" and out.mode in ("RGBA", "P"):
+            out = out.convert("RGB")
+        buf = io.BytesIO()
+        out.save(buf, format=fmt, quality=90)
+        data = buf.getvalue()
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"No se pudo procesar la imagen: {exc}")
+
+    ext = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}[fmt]
+    rel = f"products/{slugify(p.name or 'producto')}/{secrets.token_hex(16)}.{ext}"
+    try:
+        new_url = storage.upload_bytes(
+            data, rel, f"image/{'jpeg' if ext == 'jpg' else ext}")
+    except RuntimeError as exc:
+        raise HTTPException(502, f"No se pudo guardar la imagen rotada: {exc}")
+
+    old_path = storage.path_from_url(img.url)
+    img.url = new_url
+    db.commit()
+    if old_path:
+        try:
+            storage.delete_path(old_path)  # recién ahora, con la nueva ya guardada
+        except Exception:  # noqa: BLE001
+            pass
+    return {"ok": True, "src": new_url}
 
 
 @router.delete("/products/{pid}")
@@ -174,6 +327,67 @@ def update_variant(pid: int, vid: int, body: dict, db: Session = Depends(get_db)
         v.promotional_price = Decimal(str(body["promotional_price"]))
     db.commit()
     return {"ok": True}
+
+
+@router.post("/catalogo_entrante/subir")
+async def catalogo_entrante_subir(
+    filename: str = Form(...),
+    name: str = Form(...),
+    brand: str = Form(""),
+    price: str = Form(...),
+    talles: str = Form(""),
+    stock_por_talle: int = Form(1),
+    publicado: bool = Form(True),
+    convertir_a_ars: bool = Form(False),
+    rotation: int = Form(0),
+    db: Session = Depends(get_db),
+):
+    """Crea el producto a partir de una foto de la bandeja de entrada.
+
+    Reusa exactamente la misma lógica que el alta manual; lo único distinto es
+    de dónde sale la imagen. Al terminar archiva la foto para que salga de la
+    lista de pendientes.
+    """
+    from starlette.datastructures import Headers, UploadFile as StarletteUploadFile
+
+    from catalogo_entrante import _safe_path, archivar_subida
+
+    f = _safe_path(filename)
+    if not f.exists():
+        raise HTTPException(404, "No existe la imagen")
+    data = f.read_bytes()
+
+    # Rotación opcional (las fotos del catálogo a veces vienen giradas).
+    if rotation % 360:
+        try:
+            from PIL import Image
+            src = Image.open(io.BytesIO(data))
+            fmt = (src.format or "JPEG").upper()
+            out = src.rotate(-(rotation % 360), expand=True)
+            if fmt == "JPEG" and out.mode in ("RGBA", "P"):
+                out = out.convert("RGB")
+            buf = io.BytesIO()
+            out.save(buf, format=fmt, quality=90)
+            data = buf.getvalue()
+        except ImportError:
+            raise HTTPException(503, "Falta Pillow para rotar la imagen")
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(400, f"No se pudo rotar la imagen: {exc}")
+
+    ctype = "image/png" if f.suffix.lower() == ".png" else (
+        "image/webp" if f.suffix.lower() == ".webp" else "image/jpeg")
+    upload = StarletteUploadFile(
+        file=io.BytesIO(data), filename=f.name,
+        headers=Headers({"content-type": ctype}),
+    )
+
+    result = await create_product(
+        name=name, brand=brand, description="", price=price, talles=talles,
+        stock_por_talle=stock_por_talle, publicado=publicado,
+        images=[upload], convertir_a_ars=convertir_a_ars, db=db,
+    )
+    archivar_subida(filename)  # recién ahora: si falló el alta, la foto queda
+    return result
 
 
 @router.post("/products")

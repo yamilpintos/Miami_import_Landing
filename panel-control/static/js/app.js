@@ -3,17 +3,16 @@
 const API = '';  // mismo dominio
 let PRODUCTS_CACHE = [];
 
+// Datos de la tienda (URL propia). Se cargan al arrancar desde /api/store para
+// no hardcodear el dominio en el frontend.
+let STORE = { url: '', product_url_base: '/productos/' };
+
+// Set estándar de talles ofrecidos en el modal (respeta convención de la tienda)
+const STANDARD_SIZES = ['XXS', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
+
 // ============ Helpers ============
 const $ = sel => document.querySelector(sel);
 const $$ = sel => document.querySelectorAll(sel);
-
-// Escapado obligatorio para TODO dato que venga de la API y se inserte con
-// innerHTML. Los pedidos los crea cualquiera desde el checkout publico (nombre,
-// email), asi que sin esto un `<img onerror=...>` en el nombre del comprador
-// ejecuta JS con la sesion del admin apenas se abre la pestana Pedidos.
-// Regla: si el valor no lo escribiste vos en este archivo, va con esc().
-const esc = s => String(s ?? '').replace(/[&<>"']/g,
-  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function toast(msg, type = '') {
   const t = $('#toast');
@@ -32,11 +31,17 @@ function fmtNum(n) {
   return Number(n).toLocaleString('es-AR');
 }
 
+// Alias corto de escapeHtml. REGLA: todo valor que venga de la API y se
+// inserte con innerHTML va con esc(). Los pedidos los crea cualquiera desde el
+// checkout publico (nombre, email), asi que sin esto un `<img onerror=...>` en
+// el nombre del comprador ejecuta JS con la sesion del admin.
+const esc = escapeHtml;
+
 async function api(path, opts = {}) {
   const r = await fetch(API + path, opts);
   if (r.status === 401 || r.status === 403) {
-    window.location.href = '/login';
-    throw new Error('Sesión expirada');
+    window.location.href = '/login';       // sesion vencida o sin permisos
+    throw new Error('Sesion expirada');
   }
   if (!r.ok) {
     const t = await r.text();
@@ -48,21 +53,52 @@ async function api(path, opts = {}) {
   return r;
 }
 
-// ============ Tabs ============
-$$('.nav-item').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const tab = btn.dataset.tab;
-    $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    $$('.tab').forEach(s => s.classList.toggle('active', s.dataset.tab === tab));
-    if (tab === 'productos' && PRODUCTS_CACHE.length === 0) loadProducts();
-    if (tab === 'pedidos') loadOrders();
-    if (tab === 'estadisticas') loadStatsDetail();
-    if (tab === 'precios-usd') loadUsdPrices();
-    if (tab === 'whatsapp') loadWaTemplates();
-    if (tab === 'bot-mia') loadBotConfig();
-    if (tab === 'legales') loadLegalPages();
-  });
-});
+// ============ Tabs / routing por hash ============
+// Cada pestaña tiene su propia URL (#dashboard, #catalogo-entrante, etc.) para
+// poder entrar directo, compartir el link y usar atrás/adelante del navegador.
+const VALID_TABS = [
+  'dashboard', 'productos', 'alta', 'catalogo-entrante', 'pedidos',
+  'estadisticas', 'precios-usd', 'whatsapp', 'bot-mia', 'legales', 'acciones',
+];
+const TAB_LOADERS = {
+  dashboard: loadDashboard,
+  productos: () => { if (PRODUCTS_CACHE.length === 0) loadProducts(); },
+  'catalogo-entrante': loadCatalogoEntrante,
+  pedidos: loadOrders,
+  estadisticas: loadStatsDetail,
+  'precios-usd': loadUsdPrices,
+  whatsapp: loadWaTemplates,
+  'bot-mia': loadBotConfig,
+  legales: loadLegalPages,
+};
+
+function currentTabFromHash() {
+  const t = (location.hash || '').replace(/^#/, '').trim();
+  return VALID_TABS.includes(t) ? t : 'dashboard';
+}
+
+function activateTab(tab) {
+  if (!VALID_TABS.includes(tab)) tab = 'dashboard';
+  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.tab').forEach(s => s.classList.toggle('active', s.dataset.tab === tab));
+  const loader = TAB_LOADERS[tab];
+  if (loader) loader();
+  closeSidebar();            // en celu: cerrar el menú al navegar
+  window.scrollTo(0, 0);
+}
+
+// Navegación por cambio de hash (clicks en los <a>, back/forward, entrada directa)
+window.addEventListener('hashchange', () => activateTab(currentTabFromHash()));
+
+// ============ Menú lateral en celular (drawer) ============
+function openSidebar() { document.body.classList.add('nav-open'); }
+function closeSidebar() { document.body.classList.remove('nav-open'); }
+function toggleSidebar() { document.body.classList.toggle('nav-open'); }
+
+$('#mobile-menu-btn')?.addEventListener('click', toggleSidebar);
+$('#sidebar-overlay')?.addEventListener('click', closeSidebar);
+// Al tocar cualquier ítem del menú, cerrar el cajón (aunque sea la tab activa)
+$$('.nav-item').forEach(a => a.addEventListener('click', closeSidebar));
 
 // ============ Dashboard ============
 async function loadDashboard() {
@@ -182,7 +218,8 @@ function renderProductModal(p) {
   const nm = (p.name && p.name.es) || p.name || '—';
   const img = p.images && p.images[0] ? p.images[0].src : '';
   const handle = (p.handle && p.handle.es) || p.handle || '';
-  const url = `https://miamiimport4.mitiendanube.com/productos/${handle}/`;
+  // Apunta a NUESTRA tienda (antes estaba la URL de Tiendanube hardcodeada).
+  const url = `${STORE.product_url_base || '/productos/'}${handle}/`;
 
   const variants = (p.variants || []).map(v => {
     const vals = v.values || [];
@@ -200,14 +237,58 @@ function renderProductModal(p) {
     `;
   }).join('');
 
+  // ¿El producto usa el atributo "Talle"? Solo en ese caso ofrecemos agregar talles.
+  const attrs = p.attributes || [];
+  const usaTalle = attrs.some(a => {
+    const n = (typeof a === 'object' ? (a.es || '') : a) || '';
+    return n.trim().toLowerCase() === 'talle';
+  });
+
+  let addSizesHtml = '';
+  if (usaTalle) {
+    const present = new Set((p.variants || []).map(v => {
+      const vals = v.values || [];
+      return ((vals[0]?.es || vals[0]?.value || '') + '').trim().toUpperCase();
+    }));
+    const chips = STANDARD_SIZES.map(sz => {
+      if (present.has(sz)) {
+        return `<span class="size-chip present" title="Ya cargado">${esc(sz)}</span>`;
+      }
+      return `<button class="size-chip add" data-add-variant="${Number(p.id)}" data-size="${esc(sz)}" title="Agregar talle ${esc(sz)} (stock 0)">+ ${esc(sz)}</button>`;
+    }).join('');
+    addSizesHtml = `
+      <h2 style="margin-top:24px; font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-mute)">Agregar talle</h2>
+      <p style="color:var(--ink-mute); font-size:12px; margin:4px 0 12px">Los talles en gris ya están cargados. Tocá uno para agregarlo (se crea con stock 0 y después le ponés unidades).</p>
+      <div class="size-chips">${chips}</div>
+    `;
+  }
+
+  // Galería de fotos: cada una se puede girar (preview) y actualizar en la tienda
+  const imagesHtml = (p.images || []).length
+    ? `<div class="modal-photos">${(p.images || []).map(im => `
+        <div class="modal-photo" data-img-id="${Number(im.id)}" data-rot="0">
+          <img src="${esc(im.src)}" alt="">
+          <button class="modal-photo-rotate" type="button" data-rotate-preview="${Number(im.id)}" title="Girar 90°">↻</button>
+          <button class="modal-photo-apply" type="button" data-apply-rotate="${Number(im.id)}" data-pid="${Number(p.id)}">Actualizar</button>
+        </div>`).join('')}</div>`
+    : '';
+
   $('#modal-body').innerHTML = `
-    <div class="modal-brand">${esc(p.brand || '—')}</div>
-    <h2>${esc(nm)}</h2>
+    <div class="modal-brand-row">
+      <label class="modal-field-label" for="modal-brand-input">Marca</label>
+      <input id="modal-brand-input" class="modal-brand-input" value="${escapeHtml(p.brand || '')}" placeholder="Ej: Jacquemus" />
+    </div>
+    <div class="modal-name-row">
+      <input id="modal-name-input" class="modal-name-input" value="${escapeHtml(nm)}" />
+      <button class="btn-ghost" type="button" data-save-info="${Number(p.id)}">Guardar nombre y marca</button>
+    </div>
     <p style="color:var(--ink-mute); font-size:13px"><a href="${esc(url)}" target="_blank">${esc(url)} ↗</a></p>
-    ${img ? `<img class="modal-img" src="${esc(img)}" alt="${esc(nm)}">` : ''}
+    ${imagesHtml}
 
     <h2 style="margin-top:20px; font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-mute)">Variantes y stock</h2>
     ${variants}
+
+    ${addSizesHtml}
 
     <div class="modal-actions">
       <button class="btn-primary" data-save-stock="${Number(p.id)}">Guardar cambios de stock</button>
@@ -215,11 +296,53 @@ function renderProductModal(p) {
       <button class="btn-danger" data-delete-product="${Number(p.id)}" style="margin-left:auto">Eliminar producto</button>
     </div>
   `;
+}
 
-  // La URL se abre desde un data-attribute: interpolarla dentro de un
-  // onclick permitiria cerrar la string y ejecutar JS arbitrario.
-  $('#modal-body').querySelector('[data-open-url]')
-    ?.addEventListener('click', ev => window.open(ev.currentTarget.dataset.openUrl, '_blank'));
+async function saveProductInfo(pid) {
+  const name = (document.getElementById('modal-name-input')?.value || '').trim();
+  const brand = (document.getElementById('modal-brand-input')?.value || '').trim();
+  if (!name) return toast('El nombre no puede quedar vacío', 'error');
+  try {
+    await api(`/api/products/${pid}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, brand }),
+    });
+    toast('✓ Nombre y marca actualizados', 'success');
+    PRODUCTS_CACHE = [];   // que la grilla tome los datos nuevos
+  } catch (e) {
+    toast('Error al guardar: ' + e.message, 'error');
+  }
+}
+
+// Gira solo el PREVIEW (acumula grados); se aplica en la tienda con "Actualizar"
+function rotatePreview(imageId) {
+  const photo = document.querySelector(`.modal-photo[data-img-id="${imageId}"]`);
+  if (!photo) return;
+  const img = photo.querySelector('img');
+  const rot = ((parseInt(photo.dataset.rot) || 0) + 90) % 360;
+  photo.dataset.rot = rot;
+  setRotClass(img, rot);
+  photo.classList.toggle('rotated', rot !== 0);
+}
+
+async function applyRotate(pid, imageId) {
+  const photo = document.querySelector(`.modal-photo[data-img-id="${imageId}"]`);
+  const rot = parseInt(photo?.dataset.rot) || 0;
+  if (!rot) return toast('Girá la foto primero con ↻', 'error');
+  const applyBtn = photo.querySelector('.modal-photo-apply');
+  if (applyBtn) { applyBtn.disabled = true; applyBtn.textContent = '⏳ Actualizando…'; }
+  try {
+    await api(`/api/products/${pid}/images/${imageId}/rotate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ degrees: rot }),
+    });
+    toast('✓ Foto girada y actualizada en la tienda', 'success');
+    PRODUCTS_CACHE = [];
+    openProduct(pid);   // recargar el modal con la imagen ya rotada
+  } catch (e) {
+    toast('Error al actualizar la foto: ' + e.message, 'error');
+    if (applyBtn) { applyBtn.disabled = false; applyBtn.textContent = 'Actualizar'; }
+  }
 }
 
 async function adjustStock(pid, vid, delta) {
@@ -256,6 +379,21 @@ async function saveAllStock(pid) {
   loadProducts();
 }
 
+async function addVariant(pid, talle) {
+  try {
+    await api(`/api/products/${pid}/variants`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ talle, stock: 0 }),
+    });
+    toast(`✓ Talle ${talle} agregado (stock 0)`, 'success');
+    PRODUCTS_CACHE = [];   // invalidar cache de la grilla
+    openProduct(pid);      // refrescar el modal con la variante nueva
+  } catch (e) {
+    toast('Error al agregar talle: ' + e.message, 'error');
+  }
+}
+
 async function deleteProduct(pid) {
   if (!confirm('¿Eliminar este producto? Esta acción NO se puede deshacer.')) return;
   try {
@@ -272,6 +410,55 @@ $('#modal-close').addEventListener('click', () => $('#modal').classList.add('hid
 $('.modal-backdrop').addEventListener('click', () => $('#modal').classList.add('hidden'));
 
 // ============ Alta producto ============
+// Las fotos se ACUMULAN en un array propio (el <input file> nativo reemplaza
+// la selección en cada pick, así que no sirve para ir sumando de a tandas).
+// Cada item = { file, rotation }. La primera es la portada.
+let ALTA_FILES = [];
+
+function setRotClass(img, deg) {
+  img.classList.remove('rot-90', 'rot-180', 'rot-270');
+  if (deg) img.classList.add('rot-' + deg);
+}
+
+function renderAltaPreviews() {
+  const cont = $('#alta-previews');
+  if (!ALTA_FILES.length) { cont.innerHTML = ''; return; }
+  cont.innerHTML = ALTA_FILES.map((it, i) => `
+    <div class="alta-thumb" data-idx="${i}">
+      ${i === 0 ? '<span class="alta-cover">PORTADA</span>' : ''}
+      <img alt="${escapeHtml(it.file.name)}">
+      <button class="alta-remove" type="button" data-idx="${i}" title="Quitar foto">×</button>
+      <button class="alta-rotate" type="button" data-idx="${i}" title="Rotar 90°">↻</button>
+    </div>
+  `).join('');
+  cont.querySelectorAll('.alta-thumb').forEach(thumb => {
+    const i = +thumb.dataset.idx;
+    const img = thumb.querySelector('img');
+    img.src = URL.createObjectURL(ALTA_FILES[i].file);
+    setRotClass(img, ALTA_FILES[i].rotation);
+    thumb.querySelector('.alta-rotate').addEventListener('click', () => {
+      ALTA_FILES[i].rotation = (ALTA_FILES[i].rotation + 90) % 360;
+      setRotClass(img, ALTA_FILES[i].rotation);
+    });
+    thumb.querySelector('.alta-remove').addEventListener('click', () => {
+      ALTA_FILES.splice(i, 1);
+      renderAltaPreviews();   // re-render para recalcular índices y portada
+    });
+  });
+}
+
+function clearAltaPreviews() {
+  ALTA_FILES = [];
+  $('#alta-previews').innerHTML = '';
+}
+
+$('#form-nuevo').images.addEventListener('change', e => {
+  // Sumar lo elegido a lo que ya había (acumular, no reemplazar)
+  Array.from(e.target.files || []).forEach(f => ALTA_FILES.push({ file: f, rotation: 0 }));
+  e.target.value = '';   // limpiar el input para poder re-elegir y no duplicar
+  renderAltaPreviews();
+});
+
 $('#form-nuevo').addEventListener('submit', async e => {
   e.preventDefault();
   const form = e.target;
@@ -284,6 +471,11 @@ $('#form-nuevo').addEventListener('submit', async e => {
   else fd.set('publicado', 'true');
   if (!form.convertir_a_ars.checked) fd.set('convertir_a_ars', 'false');
   else fd.set('convertir_a_ars', 'true');
+
+  // Imágenes: van desde nuestro array acumulado (no del input nativo, ya vacío)
+  fd.delete('images');
+  ALTA_FILES.forEach(it => fd.append('images', it.file, it.file.name));
+  fd.set('rotations', ALTA_FILES.map(it => it.rotation).join(','));
 
   submitBtn.disabled = true;
   status.textContent = 'Creando producto + subiendo imágenes…';
@@ -299,13 +491,14 @@ $('#form-nuevo').addEventListener('submit', async e => {
     result.classList.remove('error');
     result.innerHTML = `
       <b>✓ Producto creado</b><br>
-      ID interno: ${esc(data.product_id)}<br>
+      ID interno: ${esc(data.product_id ?? data.tiendanube_id)}<br>
       Variantes creadas: ${esc(data.variantes_creadas)}<br>
-      Imágenes subidas: ${esc(data.imagenes_subidas)}<br>
+      Imágenes subidas: ${data.imagenes_subidas}${data.imagenes_fallidas ? ` (${data.imagenes_fallidas} fallaron)` : ''}<br>
       <a href="${esc(data.url)}" target="_blank">Ver en la tienda ↗</a>
     `;
     status.textContent = '';
     form.reset();
+    clearAltaPreviews();
     toast('✓ Producto creado', 'success');
     PRODUCTS_CACHE = []; // forzar recarga
   } catch (e) {
@@ -587,7 +780,7 @@ async function loadLegalPages() {
       return;
     }
     if (!r.pages.length) {
-      cnt.innerHTML = '<div class="loading">No hay HTMLs en ' + esc(r.dir) + '</div>';
+      cnt.innerHTML = '<div class="loading">No hay HTMLs en ' + r.dir + '</div>';
       return;
     }
     cnt.innerHTML = r.pages.map(p => `
@@ -682,29 +875,245 @@ $('#btn-export').addEventListener('click', () => {
   window.location.href = '/api/export/excel';
 });
 
+// ============ Catálogo entrante ============
+function escapeHtml(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function loadCatalogoEntrante() {
+  const cnt = $('#catalogo-entrante-list');
+  cnt.innerHTML = '<div class="loading">Cargando…</div>';
+  try {
+    const r = await api('/api/catalogo_entrante');
+    $('#entrante-rate').textContent = r.rate ? '$ ' + fmtNum(r.rate) : '—';
+    if (!r.available) {
+      cnt.innerHTML = `<div class="panel" style="border-color:rgba(220,143,56,0.5);">
+        <p><b>⚠️ No encuentro la carpeta de catálogo entrante.</b></p>
+        <p>Esperaba: <code style="font-size:11px;">${esc(r.dir)}</code></p></div>`;
+      return;
+    }
+    if (!r.items.length) {
+      cnt.innerHTML = '<div class="loading">No hay imágenes pendientes. ✓ Todo cargado.</div>';
+      return;
+    }
+    cnt.innerHTML = r.items.map(it => {
+      const fn = escapeHtml(it.filename);
+      const marcaWarn = it.revisar_marca
+        ? '<span class="entrante-warn">REVISAR marca</span>' : '';
+      const talleWarn = !it.talles_sugeridos
+        ? `<span class="entrante-warn">talle: ${escapeHtml(it.talle_original) || 'completar'}</span>` : '';
+      return `
+      <div class="entrante-card" data-filename="${esc(fn)}">
+        <div class="entrante-img" data-rotation="0">
+          <img src="${esc(it.img_url)}" alt="${esc(fn)}" loading="lazy">
+          <span class="entrante-page">${escapeHtml(it.pagina)}</span>
+          <button class="entrante-rotate" type="button" title="Rotar 90° (para subirla derecha)">↻</button>
+        </div>
+        <div class="entrante-fields">
+          <label>Nombre
+            <input class="e-name" type="text" value="${escapeHtml(it.nombre_sugerido)}" />
+          </label>
+          <label>Marca ${marcaWarn}
+            <input class="e-brand" type="text" value="${escapeHtml(it.marca_sugerida)}" placeholder="Ej: Off-White" />
+          </label>
+          <div class="entrante-row">
+            <label>Talles ${talleWarn}
+              <input class="e-talles" type="text" value="${escapeHtml(it.talles_sugeridos)}" placeholder="S, M, L (vacío = único)" />
+            </label>
+            <label style="max-width:90px;">Stock c/talle
+              <input class="e-stock" type="number" min="0" value="1" />
+            </label>
+          </div>
+          <div class="entrante-row">
+            <label>Precio
+              <input class="e-price" type="number" step="0.01" placeholder="430" />
+            </label>
+            <label class="checkbox-label" style="align-self:end;">
+              <input class="e-usd" type="checkbox" checked />
+              <span>USD → ARS</span>
+            </label>
+          </div>
+          <label class="checkbox-label">
+            <input class="e-pub" type="checkbox" checked />
+            <span>Publicar ya</span>
+          </label>
+          <div class="entrante-actions">
+            <button class="btn-primary e-subir" type="button">Publicar en la tienda</button>
+            <button class="btn-ghost e-descartar" type="button">Descartar</button>
+          </div>
+          <div class="entrante-status"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    cnt.querySelectorAll('.entrante-card').forEach(card => {
+      card.querySelector('.e-subir').addEventListener('click', () => subirEntrante(card));
+      card.querySelector('.e-descartar').addEventListener('click', () => descartarEntrante(card));
+      card.querySelector('.entrante-rotate')?.addEventListener('click', () => rotarEntrante(card));
+    });
+  } catch (e) {
+    cnt.innerHTML = '<div class="loading">Error: ' + esc(e.message) + '</div>';
+  }
+}
+
+function rotarEntrante(card) {
+  const box = card.querySelector('.entrante-img');
+  const img = box.querySelector('img');
+  const rot = ((parseInt(box.dataset.rotation) || 0) + 90) % 360;
+  box.dataset.rotation = rot;
+  img.classList.remove('rot-90', 'rot-180', 'rot-270');
+  if (rot) img.classList.add('rot-' + rot);
+}
+
+async function subirEntrante(card) {
+  const filename = card.dataset.filename;
+  const rotation = (card.querySelector('.entrante-img')?.dataset.rotation) || '0';
+  const name = card.querySelector('.e-name').value.trim();
+  const brand = card.querySelector('.e-brand').value.trim();
+  const price = card.querySelector('.e-price').value.trim();
+  const talles = card.querySelector('.e-talles').value.trim();
+  const stock = card.querySelector('.e-stock').value || '1';
+  const usd = card.querySelector('.e-usd').checked;
+  const pub = card.querySelector('.e-pub').checked;
+  const status = card.querySelector('.entrante-status');
+
+  if (!name) { status.textContent = '✗ Falta el nombre'; return; }
+  if (!brand) { status.textContent = '✗ Falta la marca'; return; }
+  if (!price || Number(price) <= 0) { status.textContent = '✗ Falta el precio'; return; }
+
+  const fd = new FormData();
+  fd.set('filename', filename);
+  fd.set('name', name);
+  fd.set('brand', brand);
+  fd.set('price', price);
+  fd.set('talles', talles);
+  fd.set('stock_por_talle', stock);
+  fd.set('publicado', pub ? 'true' : 'false');
+  fd.set('convertir_a_ars', usd ? 'true' : 'false');
+  fd.set('rotation', rotation);
+
+  const btn = card.querySelector('.e-subir');
+  btn.disabled = true;
+  status.textContent = '⏳ Creando producto + subiendo imagen…';
+  try {
+    const r = await fetch(API + '/api/catalogo_entrante/subir', { method: 'POST', body: fd });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || r.statusText);
+    toast('✓ ' + name + ' subido a Tiendanube', 'success');
+    PRODUCTS_CACHE = [];
+    // Sacar la tarjeta con una transición simple
+    card.style.opacity = '0.4';
+    card.querySelector('.entrante-fields').innerHTML =
+      `<div class="result-card"><b>✓ Cargado</b> (ID ${data.tiendanube_id})<br>
+       <a href="${esc(data.url)}" target="_blank">Ver en la tienda ↗</a></div>`;
+    setTimeout(() => card.remove(), 1200);
+  } catch (e) {
+    status.textContent = '✗ Error: ' + e.message;
+    toast('Error: ' + e.message, 'error');
+    btn.disabled = false;
+  }
+}
+
+async function descartarEntrante(card) {
+  if (!confirm('¿Sacar esta imagen de pendientes? (se mueve a "descartados", no se borra)')) return;
+  const fd = new FormData();
+  fd.set('filename', card.dataset.filename);
+  try {
+    await fetch(API + '/api/catalogo_entrante/descartar', { method: 'POST', body: fd });
+    card.remove();
+    toast('Descartado', 'success');
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+$('#btn-refresh-entrante')?.addEventListener('click', loadCatalogoEntrante);
+
+// ============ Subida de fotos al catálogo entrante ============
+// El panel viejo leía una carpeta del disco de la PC. Acá el panel corre en el
+// servidor, así que las fotos entran por el navegador. El resto del flujo
+// (deducir marca/talle del nombre del archivo) es idéntico.
+$('#btn-entrante-pick')?.addEventListener('click', () => $('#entrante-files')?.click());
+
+$('#entrante-files')?.addEventListener('change', async (ev) => {
+  const files = Array.from(ev.target.files || []);
+  if (!files.length) return;
+  const status = $('#entrante-upload-status');
+  status.textContent = `Subiendo ${files.length} foto(s)…`;
+  const fd = new FormData();
+  files.forEach(f => fd.append('files', f));
+  try {
+    const r = await fetch(API + '/api/catalogo_entrante/upload', { method: 'POST', body: fd });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || r.statusText);
+    const n = (data.guardadas || []).length;
+    const bad = (data.rechazadas || []).length;
+    status.textContent = `${n} subida(s)` + (bad ? ` · ${bad} rechazada(s)` : '');
+    toast(`${n} foto(s) subidas`, 'success');
+    ev.target.value = '';           // permite volver a elegir los mismos archivos
+    loadCatalogoEntrante();
+  } catch (e) {
+    status.textContent = '';
+    toast('Error subiendo: ' + e.message, 'error');
+  }
+});
+
+// ============ Cerrar sesión ============
 $('#btn-logout')?.addEventListener('click', async () => {
-  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { /* igual salimos */ }
   window.location.href = '/login';
 });
 
 // ============ Init ============
-loadDashboard();
+// Si la URL no trae hash, arrancamos en #dashboard (deja la URL prolija).
+if (!location.hash) {
+  history.replaceState(null, '', '#' + currentTabFromHash());
+}
+
+// Cargar los datos de la tienda ANTES de pintar (los links de producto los
+// necesitan). Si falla, se sigue con los valores por defecto.
+(async () => {
+  try {
+    STORE = { ...STORE, ...(await api('/api/store')) };
+    const link = $('#link-tienda');
+    if (link && STORE.url) link.href = STORE.url;
+  } catch (e) { /* el panel funciona igual sin esto */ }
+  activateTab(currentTabFromHash());
+})();
+
 
 // ============ Delegacion de eventos ============
-// Los handlers no van inline (onclick="...") porque eso obliga a permitir
-// 'unsafe-inline' en script-src, lo que anula la CSP como defensa contra XSS.
-// Se delega desde document: funciona igual para el HTML que se genera despues.
+// Los handlers NO van inline (onclick="..."): eso exigiria 'unsafe-inline' en
+// script-src y anularia la CSP como defensa contra XSS. Se delega desde
+// document, asi funciona igual para el HTML que se genera despues.
 document.addEventListener('click', ev => {
-  const card = ev.target.closest('[data-product-id]');
+  const t = ev.target;
+
+  const card = t.closest('[data-product-id]');
   if (card) return openProduct(Number(card.dataset.productId));
 
-  const adj = ev.target.closest('[data-adjust]');
+  const adj = t.closest('[data-adjust]');
   if (adj) return adjustStock(Number(adj.dataset.pid), Number(adj.dataset.vid),
                               Number(adj.dataset.adjust));
 
-  const save = ev.target.closest('[data-save-stock]');
-  if (save) return saveAllStock(Number(save.dataset.saveStock));
+  const addv = t.closest('[data-add-variant]');
+  if (addv) return addVariant(Number(addv.dataset.addVariant), addv.dataset.size);
 
-  const del = ev.target.closest('[data-delete-product]');
+  const rot = t.closest('[data-rotate-preview]');
+  if (rot) return rotatePreview(Number(rot.dataset.rotatePreview));
+
+  const app = t.closest('[data-apply-rotate]');
+  if (app) return applyRotate(Number(app.dataset.pid), Number(app.dataset.applyRotate));
+
+  const info = t.closest('[data-save-info]');
+  if (info) return saveProductInfo(Number(info.dataset.saveInfo));
+
+  const sst = t.closest('[data-save-stock]');
+  if (sst) return saveAllStock(Number(sst.dataset.saveStock));
+
+  const del = t.closest('[data-delete-product]');
   if (del) return deleteProduct(Number(del.dataset.deleteProduct));
+
+  const open = t.closest('[data-open-url]');
+  if (open) return window.open(open.dataset.openUrl, '_blank');
 });
