@@ -550,8 +550,20 @@ async function loadOrders() {
       const waBtn = phone
         ? `<button class="btn-ghost wa-btn" data-phone="${esc(phone)}" data-order="${esc(orderNum)}" data-name="${esc(customer)}" title="Abrir WhatsApp con plantilla">💬 WhatsApp</button>`
         : `<span style="color:#888;font-size:11px;">sin tel</span>`;
+      // Dirección de envío: sin esto el pedido no se puede despachar.
+      const d = o.shipping_address || {};
+      const calle = [d.street, d.number].filter(Boolean).join(' ');
+      const piso = d.floor ? `, ${d.floor}` : '';
+      const loc = [d.city, d.province, d.zipcode].filter(Boolean).join(' · ');
+      const envio = (calle || loc)
+        ? `${esc(calle)}${esc(piso)}${calle && loc ? ' — ' : ''}${esc(loc)}`
+        : '<span style="color:#888">sin dirección cargada</span>';
+      const items = (o.products || [])
+        .map(p => `${esc(p.name)}${p.sku ? ' (' + esc(p.sku) + ')' : ''} × ${esc(p.quantity)}`)
+        .join('<br>') || '—';
+
       return `
-        <div class="order-row">
+        <div class="order-row" data-order-toggle="${esc(orderNum)}" style="cursor:pointer">
           <div class="num">#${esc(orderNum)}</div>
           <div class="customer">
             ${esc(customer)}
@@ -561,6 +573,14 @@ async function loadOrders() {
           <div class="total">${fmtMoney(o.total)}</div>
           <div class="status"><span class="status-badge ${esc(badge)}">${esc(status)}</span></div>
           <div class="wa-cell">${waBtn}</div>
+        </div>
+        <div class="order-detail" data-order-detail="${esc(orderNum)}" hidden
+             style="padding:14px 18px;margin:-6px 0 10px;background:#0d0d0d;
+                    border-left:2px solid var(--gold,#b99b63);border-radius:0 8px 8px 0;
+                    font-size:13px;color:#c9c4b8;line-height:1.7">
+          <div><strong style="color:#f5f3ee">Enviar a:</strong> ${envio}</div>
+          ${d.phone ? `<div><strong style="color:#f5f3ee">Tel:</strong> ${esc(d.phone)}</div>` : ''}
+          <div style="margin-top:8px"><strong style="color:#f5f3ee">Productos:</strong><br>${items}</div>
         </div>
       `;
     }).join('');
@@ -1186,4 +1206,13 @@ document.addEventListener('click', ev => {
 
   const open = t.closest('[data-open-url]');
   if (open) return window.open(open.dataset.openUrl, '_blank');
+
+  // Desplegar el detalle del pedido (dirección de envío y productos).
+  // El botón de WhatsApp está adentro de la fila: no debe abrir el detalle.
+  const fila = t.closest('[data-order-toggle]');
+  if (fila && !t.closest('.wa-btn')) {
+    const det = document.querySelector(
+      `[data-order-detail="${CSS.escape(fila.dataset.orderToggle)}"]`);
+    if (det) det.hidden = !det.hidden;
+  }
 });
