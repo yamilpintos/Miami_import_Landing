@@ -52,25 +52,32 @@ templates.env.globals["STORE_NAME"] = "MIAMI IMPORT"
 # --------------------------------------------------------------------------- #
 # Helpers de presentación
 # --------------------------------------------------------------------------- #
-def fmt_ars(value) -> str:
-    """Formatea en pesos redondeando, no truncando.
+def _fmt_monto(value, simbolo: str) -> str:
+    """Formatea un importe con separador de miles.
 
-    Con int() un precio de $84.999,50 se mostraba como "$ 84.999" y se cobraban
-    $84.999,50: exhibir menos de lo que se cobra es exactamente lo que sanciona
-    la ley de defensa del consumidor. Además, truncando línea por línea las
-    líneas no sumaban el total.
+    Redondea (no trunca): con int(), $84.999,50 se exhibía "$ 84.999" y se
+    cobraban $84.999,50 — mostrar menos de lo que se cobra es justo lo que
+    sanciona la ley de defensa del consumidor.
+
+    Pero por debajo de 10 se muestran los centavos: redondear a entero convertía
+    US$ 0,07 en "US$ 0", que es directamente un precio equivocado.
     """
     if value is None:
         return ""
-    n = Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-    return f"$ {n:,.0f}".replace(",", ".")
+    d = Decimal(str(value))
+    if abs(d) < 10:
+        n = d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return f"{simbolo} {n:,.2f}".replace(",", "@").replace(".", ",").replace("@", ".")
+    n = d.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    return f"{simbolo} {n:,.0f}".replace(",", ".")
+
+
+def fmt_ars(value) -> str:
+    return _fmt_monto(value, "$")
 
 
 def fmt_usd(value) -> str:
-    if value is None:
-        return ""
-    n = Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-    return f"US$ {n:,.0f}".replace(",", ".")
+    return _fmt_monto(value, "US$")
 
 
 templates.env.filters["ars"] = fmt_ars
