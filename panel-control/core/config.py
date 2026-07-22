@@ -129,9 +129,12 @@ class Settings:
     USD_TO_ARS_RATE: float = float(os.environ.get("USD_TO_ARS_RATE", "1410") or "1410")
 
     # --- Stripe ---
-    STRIPE_SECRET_KEY: str = os.environ.get("STRIPE_SECRET_KEY", "")
-    STRIPE_PUBLISHABLE_KEY: str = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
-    STRIPE_WEBHOOK_SECRET: str = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    # .strip(): al copiar las claves del dashboard es muy fácil arrastrar un
+    # espacio o un salto de línea. Con eso, Stripe.js rechaza la clave pública
+    # ("The string did not match the expected pattern") y el checkout no abre.
+    STRIPE_SECRET_KEY: str = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+    STRIPE_PUBLISHABLE_KEY: str = os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip()
+    STRIPE_WEBHOOK_SECRET: str = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
     CHECKOUT_CURRENCY: str = os.environ.get("CHECKOUT_CURRENCY", "ars").strip().lower()
 
     @property

@@ -116,7 +116,15 @@
       }
 
       clientSecret=data.client_secret; orderNumber=data.order_number; orderToken=data.order_token;
-      stripe=Stripe(data.publishable_key);
+
+      // Chequeo explícito de la clave pública: si viene vacía o con basura
+      // (un espacio al copiarla, por ejemplo), Stripe.js tira un error
+      // ilegible para el cliente. Mejor decir qué pasa.
+      const pk=(data.publishable_key||'').trim();
+      if(!/^pk_(test|live)_[A-Za-z0-9]+$/.test(pk)){
+        throw new Error('El medio de pago no está bien configurado. Escribinos y lo resolvemos.');
+      }
+      stripe=Stripe(pk);
       elements=stripe.elements({clientSecret});
       elements.create('payment').mount('#payment-element');
       document.getElementById('payment-section').style.display='block';
