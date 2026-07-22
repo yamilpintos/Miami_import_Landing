@@ -2,7 +2,11 @@
 {% macro product_card(p, usd_rate) %}
 {% set img = p.images[0].url if p.images else '/static/images/empty-placeholder.png' %}
 {% set ars = p.min_price %}
-{% set usd = (p.variants[0].usd_price if p.variants and p.variants[0].usd_price else (ars / usd_rate if ars else None)) %}
+{# `ars` es Decimal y `usd_rate` float: dividirlos directo lanza TypeError y
+   tira con 500 la página ENTERA (home, listado, categoría). Bastaba con que un
+   solo producto no tuviera usd_price cargado. #}
+{% set usd = (p.variants[0].usd_price if p.variants and p.variants[0].usd_price
+              else (ars | float / usd_rate if ars and usd_rate else None)) %}
 <a class="mi-card" href="/productos/{{ p.handle }}/">
   {% if p.total_stock == 0 %}<span class="mi-soldout">Agotado</span>{% endif %}
   <div class="mi-card__img"><img src="{{ img }}" alt="{{ p.name }}" loading="lazy"/></div>

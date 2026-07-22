@@ -10,7 +10,10 @@
 
 {% block content %}
 {% set ars = product.min_price %}
-{% set usd = product.variants[0].usd_price if product.variants and product.variants[0].usd_price else (ars / usd_rate if ars else None) %}
+{# `ars` es Decimal y `usd_rate` float: dividirlos directo lanza TypeError y
+   tira la página con 500. Le pasaba a todo producto sin usd_price cargado. #}
+{% set usd = product.variants[0].usd_price if product.variants and product.variants[0].usd_price
+             else (ars | float / usd_rate if ars and usd_rate else None) %}
 <div class="mi-container" style="padding-top:48px">
   <nav style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,243,238,.4);margin-bottom:28px">
     <a href="/">Inicio</a>
