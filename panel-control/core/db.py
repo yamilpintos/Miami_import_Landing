@@ -61,6 +61,9 @@ _ADDED_COLUMNS = {
         "cart_id": "INTEGER",
         "stock_reserved": "BOOLEAN DEFAULT FALSE",
     },
+    "variants": {
+        "currency": "VARCHAR(3)",
+    },
 }
 
 

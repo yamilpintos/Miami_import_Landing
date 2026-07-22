@@ -54,11 +54,11 @@
       <span style="font-size:14px">{{ it.product_name }}{% if it.variant_value %}
         <span style="color:rgba(245,243,238,.5)"> · {{ it.variant_value }}</span>{% endif %}
         <span style="color:rgba(245,243,238,.5)"> ×{{ it.quantity }}</span></span>
-      <span style="font-weight:600;font-size:14px;white-space:nowrap">{{ it.subtotal | ars }}</span>
+      <span style="font-weight:600;font-size:14px;white-space:nowrap">{{ it.subtotal | money(order.currency) }}</span>
     </div>
     {% endfor %}
     <div style="display:flex;justify-content:space-between;margin-top:18px;font-size:18px;font-weight:700">
-      <span>Total</span><span style="color:var(--miami-gold,#b99b63)">{{ order.total | ars }}</span>
+      <span>Total</span><span style="color:var(--miami-gold,#b99b63)">{{ order.total | money(order.currency) }}</span>
     </div>
     {% if order.shipping_address and order.shipping_address.get('street') %}
     <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06);

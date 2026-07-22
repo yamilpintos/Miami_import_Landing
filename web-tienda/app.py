@@ -80,8 +80,20 @@ def fmt_usd(value) -> str:
     return _fmt_monto(value, "US$")
 
 
+# Símbolo por moneda, para los productos que se cobran en otra distinta a la
+# de la tienda. Sin esto un producto en dólares se mostraba con "$" y parecía
+# 300 veces más barato de lo que se le va a cobrar.
+_SIMBOLOS = {"ars": "$", "usd": "US$", "eur": "€", "brl": "R$", "clp": "$", "uyu": "$U"}
+
+
+def fmt_moneda(value, currency: str | None = None) -> str:
+    cur = (currency or settings.CHECKOUT_CURRENCY or "ars").strip().lower()
+    return _fmt_monto(value, _SIMBOLOS.get(cur, cur.upper()))
+
+
 templates.env.filters["ars"] = fmt_ars
 templates.env.filters["usd"] = fmt_usd
+templates.env.filters["money"] = fmt_moneda   # {{ importe | money(moneda) }}
 # Filtro del theme original: 'images/x.webp' | static_url -> /static/images/x.webp
 # Permite incluir los snipplets .tpl (miami-trilogy, etc.) casi sin tocarlos.
 templates.env.filters["static_url"] = lambda p: f"/static/{p}"

@@ -60,11 +60,11 @@
           <div style="color:#f5f3ee">{{ it.product_name }}</div>
           <div style="color:rgba(245,243,238,.55)">{% if it.value %}Talle {{ it.value }} · {% endif %}x{{ it.quantity }}</div>
         </div>
-        <div style="font-size:13px;font-weight:600;color:#f5f3ee">{{ it.line_total | ars }}</div>
+        <div style="font-size:13px;font-weight:600;color:#f5f3ee">{{ it.line_total | money(it.currency) }}</div>
       </div>
       {% endfor %}
       <div style="display:flex;justify-content:space-between;margin-top:18px;font-size:16px;font-weight:700;color:#f5f3ee">
-        <span>Total</span><span id="total-final" style="color:var(--miami-gold,#b99b63)">{{ cart['subtotal'] | ars }}</span>
+        <span>Total</span><span id="total-final" style="color:var(--miami-gold,#b99b63)">{{ cart['subtotal'] | money(cart['currency']) }}</span>
       </div>
       {% if cart['price_changed'] %}
       <p style="color:#dca06a;font-size:12px;margin-top:10px">

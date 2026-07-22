@@ -235,6 +235,7 @@ def _create_intent_once(body: dict, request: Request, db: Session,
     # es Postgres, donde sí aplica.
     subtotal = Decimal("0")
     snapshot = []
+    monedas: set[str] = set()
     for it in sorted(cart.items, key=lambda x: x.variant_id or 0):  # orden fijo: evita deadlocks
         v = db.get(Variant, it.variant_id, with_for_update=True) if it.variant_id else None
         if not v or it.quantity > (v.stock or 0):
@@ -254,17 +255,26 @@ def _create_intent_once(body: dict, request: Request, db: Session,
             db.rollback()
             log.error("Variante %s con precio inválido (%s): no se puede vender", v.id, price)
             raise HTTPException(409, f"{name} no tiene precio válido")
+        monedas.add((v.currency or settings.CHECKOUT_CURRENCY).strip().lower())
         line = price * it.quantity
         subtotal += line
         snapshot.append((v, it.quantity, price, line))
+
+    # Un PaymentIntent cobra en UNA sola moneda. Si el carrito mezcla, no se
+    # puede cobrar de una: mejor avisarlo que cobrar cualquier cosa.
+    if len(monedas) > 1:
+        db.rollback()
+        raise HTTPException(
+            409, "No se pueden comprar juntos productos en distintas monedas. "
+                 "Dejá uno solo en el carrito y hacé la compra por separado.")
 
     total = subtotal  # MVP: sin costo de envío (se suma al confirmar logística)
     if total <= 0:
         db.rollback()
         raise HTTPException(400, "El total del pedido es inválido")
 
-    currency = settings.CHECKOUT_CURRENCY
-    minor = settings.currency_minor_units
+    currency = monedas.pop() if monedas else settings.CHECKOUT_CURRENCY
+    minor = settings.minor_units(currency)
 
     # --- Crear la orden y descontar la reserva -------------------------------
     order = Order(
@@ -383,7 +393,7 @@ def confirmar_pago_desde_stripe(db: Session, order: Order, pi_id: str) -> bool:
     if intent.get("status") != "succeeded":
         return False
 
-    minor = settings.currency_minor_units
+    minor = settings.minor_units(payment.currency)
     pagado = Decimal(intent.get("amount_received") or intent.get("amount") or 0) / minor
     moneda = (intent.get("currency") or "").upper()[:3]
     if pagado != payment.amount or moneda != (payment.currency or "").upper()[:3]:
@@ -506,7 +516,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
     if etype == "payment_intent.succeeded":
         # Verificar que lo cobrado sea lo que esperábamos, en la moneda correcta.
-        minor = settings.currency_minor_units
+        minor = settings.minor_units(payment.currency)
         paid = Decimal(obj.get("amount_received") or obj.get("amount") or 0) / minor
         paid_cur = (obj.get("currency") or "").upper()[:3]
         if paid != payment.amount or paid_cur != (payment.currency or "").upper()[:3]:

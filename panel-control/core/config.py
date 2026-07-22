@@ -137,18 +137,22 @@ class Settings:
     STRIPE_WEBHOOK_SECRET: str = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
     CHECKOUT_CURRENCY: str = os.environ.get("CHECKOUT_CURRENCY", "ars").strip().lower()
 
+    # Monedas de cero decimales según Stripe: se cobran en unidades enteras,
+    # multiplicar por 100 cobraría 100x de más.
+    _ZERO_DECIMAL = {
+        "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga",
+        "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf",
+    }
+
+    def minor_units(self, currency: str | None = None) -> int:
+        """Multiplicador a la unidad mínima de la moneda indicada."""
+        cur = (currency or self.CHECKOUT_CURRENCY or "").strip().lower()
+        return 1 if cur in self._ZERO_DECIMAL else 100
+
     @property
     def currency_minor_units(self) -> int:
-        """Multiplicador a la unidad mínima de la moneda, según la tabla de Stripe.
-
-        Las monedas de cero decimales (JPY, CLP, COP...) se cobran en unidades
-        enteras: multiplicar por 100 cobraría 100x de más.
-        """
-        zero_decimal = {
-            "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga",
-            "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf",
-        }
-        return 1 if self.CHECKOUT_CURRENCY in zero_decimal else 100
+        """Compatibilidad: unidades mínimas de la moneda por defecto."""
+        return self.minor_units(self.CHECKOUT_CURRENCY)
 
     # --- Google OAuth ---
     GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "")

@@ -211,6 +211,8 @@ class ProductImage(Base):
 
 
 class Variant(Base):
+    # NOTA: `currency` (más abajo) permite cobrar una variante puntual en otra
+    # moneda que la de la tienda. Vacío = se usa CHECKOUT_CURRENCY.
     __tablename__ = "variants"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -221,6 +223,11 @@ class Variant(Base):
     compare_at_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     promotional_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     usd_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))        # control en USD
+    # Moneda en la que se COBRA esta variante. Vacío = la de la tienda
+    # (CHECKOUT_CURRENCY, hoy "ars"). Permite tener un producto puntual en otra
+    # moneda sin tocar el resto del catálogo. `price` se interpreta en ESTA
+    # moneda, así que cargarla implica cargar el precio correspondiente.
+    currency: Mapped[str | None] = mapped_column(String(3))
     stock: Mapped[int] = mapped_column(Integer, default=0)
     value: Mapped[str | None] = mapped_column(String(255))  # talle/color (ej "M")
     position: Mapped[int] = mapped_column(Integer, default=1)

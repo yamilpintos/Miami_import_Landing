@@ -109,6 +109,7 @@ def cart_summary(cart: Cart | None) -> dict:
         img = prod.images[0].url if (prod and prod.images) else "/static/images/empty-placeholder.png"
         items.append({
             "variant_id": v.id,
+            "currency": (v.currency or settings.CHECKOUT_CURRENCY).lower(),
             "product_id": prod.id if prod else None,
             "handle": prod.handle if prod else None,
             "product_name": prod.name if prod else "",
@@ -123,9 +124,14 @@ def cart_summary(cart: Cart | None) -> dict:
             "line_total": f"{line:.2f}",
             "image": img,
         })
+    # Moneda del carrito. Si hay mezcla, el checkout la rechaza (un cobro no
+    # puede tener dos monedas); acá se informa para poder avisarlo antes.
+    monedas = {i["currency"] for i in items}
     return {
         "items": items,
         "count": count,
+        "currency": (monedas.pop() if len(monedas) == 1 else None),
+        "mixed_currency": len(monedas) > 1,
         "subtotal": f"{subtotal:.2f}",
         "subtotal_raw": float(subtotal),
         "price_changed": any_changed,
