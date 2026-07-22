@@ -22,7 +22,7 @@
     <strong>#{{ order.number }}</strong> si tenés dudas.
   </p>
 
-  <div style="background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px;margin:32px 0;text-align:left">
+  <div style="background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px;margin:32px 0;text-align:left;color:#f5f3ee">
     {% for it in order.items %}
     <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
       <span>{{ it.product_name }}{% if it.variant_value %} · {{ it.variant_value }}{% endif %} <span style="color:rgba(245,243,238,.45)">x{{ it.quantity }}</span></span>

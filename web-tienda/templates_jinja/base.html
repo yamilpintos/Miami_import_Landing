@@ -19,7 +19,12 @@
   <link rel="stylesheet" href="/static/css/compiled/style-critical.css"/>
   <link rel="stylesheet" href="/static/css/compiled/style-utilities.css"/>
   <link rel="stylesheet" href="/static/css/miami-import-custom.css"/>
-  <link rel="stylesheet" href="/static/css/compiled/style-async.css" media="print" onload="this.media='all'"/>
+  {# Se carga BLOQUEANTE, no con el truco de media="print". Este archivo no
+     tiene estilos decorativos: tiene las grillas, los contenedores y los
+     tamaños de fuente. Diferirlo hacía que la página se dibujara con los
+     estilos por defecto del navegador (todo grande y sin columnas) y saltara
+     al acomodarse. Son 38 KB del mismo origen: no justifica el parpadeo. #}
+  <link rel="stylesheet" href="/static/css/compiled/style-async.css"/>
 
   <!-- Capa Champagne Noir (estilos propios, idénticos al theme original) -->
   {% include "miami-styles.tpl" %}
