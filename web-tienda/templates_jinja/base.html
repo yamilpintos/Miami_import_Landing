@@ -78,20 +78,14 @@
     @media(max-width:900px){.mi-grid{grid-template-columns:repeat(2,1fr)}.mi-footer__grid{grid-template-columns:1fr}.mi-nav{display:none}}
   </style>
 </head>
-<body class="template-{{ template_class|default('page') }} is-preloading">
+<body class="template-{{ template_class|default('page') }}">
 
-  <!-- Preloader (idéntico al original) -->
-  <div id="miami-preloader" aria-hidden="true">
-    <img class="miami-preloader__logo" src="/static/images/miami-logo-v4.webp" alt="" fetchpriority="high"/>
-    <div class="miami-preloader__bar"><i></i></div>
-  </div>
-  <script nonce="{{ csp_nonce }}">
-    (function(){var p=document.getElementById('miami-preloader');if(!p)return;var h=false;
-    function hide(){if(h)return;h=true;p.classList.add('is-hidden');document.body.classList.remove('is-preloading');
-    setTimeout(function(){if(p.parentNode)p.parentNode.removeChild(p)},600);}
-    if(document.readyState==='complete'){setTimeout(hide,100)}else{window.addEventListener('load',function(){setTimeout(hide,150)})}
-    setTimeout(hide,4500);})();
-  </script>
+  {# Se quitó el preloader: tenía el HTML y el JS, pero su CSS nunca existió en
+     ningún archivo. Sin estilos, el logo se dibujaba a tamaño natural (enorme)
+     empujando la página, y recién desaparecía al terminar de cargar. Además
+     agregaba una demora antes de mostrar la tienda.
+     El snippet de precios contempla que la clase `is-preloading` no esté: en
+     ese caso muestra el aviso directamente. #}
 
   <div class="mi-adbar" style="background:var(--miami-gold,#b99b63);color:#0a0a0a;text-align:center;
     font-size:11px;letter-spacing:.18em;text-transform:uppercase;padding:8px 16px;font-weight:600">
