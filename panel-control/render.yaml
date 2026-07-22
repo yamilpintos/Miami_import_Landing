@@ -33,6 +33,9 @@ services:
         value: "false"
       - key: COOKIE_SECURE
         value: "true"
+      # Pasar a "true" cuando el admin tenga el segundo factor configurado.
+      - key: REQUIRE_MFA
+        value: "false"
       # Completar en el dashboard (Environment > Secret):
       - key: ADMIN_EMAIL
         sync: false

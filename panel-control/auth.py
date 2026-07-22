@@ -75,8 +75,11 @@ def get_current_admin(
     user = _admin_from_token(db, token)
     if not user:
         raise HTTPException(401, "No autenticado")
-    # Sin segundo factor configurado, la sesión solo sirve para configurarlo.
-    if not user.totp_enabled and request.url.path not in _MFA_SETUP_PATHS:
+    # Con REQUIRE_MFA activo, una sesión sin segundo factor solo sirve para
+    # configurarlo. Con REQUIRE_MFA apagado se entra solo con contraseña (pero
+    # a quien YA tenga TOTP se le sigue pidiendo en el login).
+    if (settings.REQUIRE_MFA and not user.totp_enabled
+            and request.url.path not in _MFA_SETUP_PATHS):
         raise HTTPException(403, "Configurá el segundo factor (MFA) para continuar")
     return user
 

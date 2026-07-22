@@ -113,6 +113,13 @@ class Settings:
     COOKIE_SECURE: bool = _bool("COOKIE_SECURE", default=not _DEV_MODE)
     COOKIE_DOMAIN: str | None = os.environ.get("COOKIE_DOMAIN") or None
 
+    # ¿El panel EXIGE segundo factor para operar?
+    # En false, el admin entra solo con contraseña. Si un usuario igual tiene
+    # TOTP activado, se le sigue pidiendo al ingresar: apagar esto no desactiva
+    # el MFA de quien ya lo configuró, solo deja de hacerlo obligatorio.
+    # Poner REQUIRE_MFA=true (recomendado) cuando se termine de configurar.
+    REQUIRE_MFA: bool = _bool("REQUIRE_MFA", default=False)
+
     # --- Tienda Nube (solo para migrar / refrescar datos) ---
     TIENDANUBE_STORE_ID: str = os.environ.get("TIENDANUBE_STORE_ID", "")
     TIENDANUBE_ACCESS_TOKEN: str = os.environ.get("TIENDANUBE_ACCESS_TOKEN", "")
