@@ -9,6 +9,19 @@
   <p style="color:rgba(245,243,238,.6)">Pedido <strong>#{{ order.number }}</strong>
     {% if not paid %}<br>Apenas se acredite el pago vas a ver el pedido como pagado. Puede tardar unos segundos.{% endif %}</p>
 
+  {# Guardá este link: para una compra sin cuenta es la única forma de volver
+     a ver el pedido (el número solo no alcanza, hace falta el token). #}
+  <p style="color:rgba(245,243,238,.5);font-size:13px">
+    Guardá este enlace para seguir tu pedido:<br>
+    <a href="{{ request.url }}" style="color:var(--miami-gold,#b99b63);word-break:break-all">{{ request.url }}</a>
+  </p>
+
+  <p id="mi-pago-lento" hidden style="color:#dca06a;font-size:14px;margin-top:14px">
+    El pago está tardando más de lo normal en confirmarse. <strong>No vuelvas a pagar</strong>:
+    si el cobro salió, el pedido se acredita solo. Escribinos con el número
+    <strong>#{{ order.number }}</strong> si tenés dudas.
+  </p>
+
   <div style="background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px;margin:32px 0;text-align:left">
     {% for it in order.items %}
     <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
@@ -30,9 +43,17 @@
 {% if order.payment_status != 'paid' %}
 <script nonce="{{ csp_nonce }}">
   // Refresca para reflejar el pago acreditado vía webhook.
-  let tries=0; const iv=setInterval(async()=>{ tries++; if(tries>10){clearInterval(iv);return;}
-    const r=await fetch(location.pathname,{headers:{'X-Requested-With':'poll'}});
-    if(r.ok){ const t=await r.text(); if(t.includes('payment_status'+': paid') || t.includes('Pago: paid')){ location.reload(); clearInterval(iv);} }
+  // OJO: hay que conservar location.search — ahí viaja el token ?t=... que
+  // autoriza a ver el pedido. Sin él, un invitado recibía 404 en cada intento
+  // y quedaba para siempre en "estamos confirmando tu pago".
+  let tries=0;
+  const iv=setInterval(async()=>{
+    tries++;
+    if(tries>40){ clearInterval(iv); document.getElementById('mi-pago-lento')?.removeAttribute('hidden'); return; }
+    try{
+      const r=await fetch(location.pathname+location.search,{headers:{'X-Requested-With':'poll'}});
+      if(r.ok){ const t=await r.text(); if(t.includes('Pago: paid')){ clearInterval(iv); location.reload(); } }
+    }catch(e){ /* reintenta en el próximo tick */ }
   },3000);
 </script>
 {% endif %}

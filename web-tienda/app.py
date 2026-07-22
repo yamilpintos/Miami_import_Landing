@@ -13,7 +13,7 @@ Abrir: http://localhost:8001
 from __future__ import annotations
 
 import secrets
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import uvicorn
@@ -53,16 +53,24 @@ templates.env.globals["STORE_NAME"] = "MIAMI IMPORT"
 # Helpers de presentación
 # --------------------------------------------------------------------------- #
 def fmt_ars(value) -> str:
+    """Formatea en pesos redondeando, no truncando.
+
+    Con int() un precio de $84.999,50 se mostraba como "$ 84.999" y se cobraban
+    $84.999,50: exhibir menos de lo que se cobra es exactamente lo que sanciona
+    la ley de defensa del consumidor. Además, truncando línea por línea las
+    líneas no sumaban el total.
+    """
     if value is None:
         return ""
-    n = int(Decimal(str(value)))
+    n = Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     return f"$ {n:,.0f}".replace(",", ".")
 
 
 def fmt_usd(value) -> str:
     if value is None:
         return ""
-    return f"US$ {int(Decimal(str(value))):,}".replace(",", ".")
+    n = Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    return f"US$ {n:,.0f}".replace(",", ".")
 
 
 templates.env.filters["ars"] = fmt_ars
@@ -115,12 +123,13 @@ install_security(
                "img-src": "https://miamiimport.com.ar",
                "connect-src": "https://bot-miami.onrender.com https://miamiimport.com.ar"},
     use_nonce=False,
-    # El webhook también se limita. La firma ya rechaza los eventos falsos, así
-    # que esto es solo contra inundación; si Stripe llegara a comerse un 429,
-    # reintenga la entrega, no se pierde el evento.
+    # El webhook NO se limita: Stripe entrega desde un pool chico de IPs y una
+    # tanda normal de pedidos (cada uno dispara varios eventos) superaba los
+    # 30/min y se comía 429. Reintenta, pero deja los pedidos en "confirmando"
+    # varios minutos, que es justo lo que empuja al cliente a pagar dos veces.
+    # La firma HMAC ya es la defensa real contra eventos falsos.
     sensitive_prefixes=("/api/account/login", "/api/account/register",
-                        "/api/account/password", "/api/checkout",
-                        "/api/stripe/webhook"),
+                        "/api/account/password", "/api/checkout"),
 )
 
 app.include_router(cart_router)

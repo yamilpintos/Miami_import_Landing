@@ -46,9 +46,44 @@ def record_failure(key: str) -> None:
         q.clear()
 
 
+# Contador por CUENTA (sin IP). No bloquea: solo frena. Un bloqueo duro por
+# cuenta deja que cualquiera que sepa el email del admin lo eche del panel para
+# siempre, fallando el login 5 veces cada 15 minutos.
+_SOFT_THRESHOLD = 5
+_SOFT_MAX_DELAY = 8.0     # segundos
+_soft_failures: dict[str, deque] = defaultdict(deque)
+
+
+def record_soft_failure(key: str) -> None:
+    now = time.time()
+    q = _soft_failures[key]
+    q.append(now)
+    while q and now - q[0] > _LOCKOUT_WINDOW:
+        q.popleft()
+
+
+def soft_delay(key: str) -> float:
+    """Segundos a esperar antes de procesar el intento (backoff exponencial).
+
+    Hace inviable la fuerza bruta distribuida sin dejar a nadie afuera: el
+    dueño con la contraseña correcta entra igual, solo espera unos segundos.
+    """
+    q = _soft_failures.get(key)
+    if not q:
+        return 0.0
+    now = time.time()
+    while q and now - q[0] > _LOCKOUT_WINDOW:
+        q.popleft()
+    extra = len(q) - _SOFT_THRESHOLD
+    if extra < 0:
+        return 0.0
+    return min(_SOFT_MAX_DELAY, 0.5 * (2 ** min(extra, 5)))
+
+
 def clear_failures(key: str) -> None:
     _failed.pop(key, None)
     _locked_until.pop(key, None)
+    _soft_failures.pop(key, None)
 
 # Hosts permitidos por la tienda (CDNs de animación, Stripe, fuentes, imágenes TN, bot).
 #

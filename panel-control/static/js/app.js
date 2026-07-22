@@ -780,7 +780,7 @@ async function loadLegalPages() {
       return;
     }
     if (!r.pages.length) {
-      cnt.innerHTML = '<div class="loading">No hay HTMLs en ' + r.dir + '</div>';
+      cnt.innerHTML = '<div class="loading">No hay HTMLs en ' + esc(r.dir) + '</div>';
       return;
     }
     cnt.innerHTML = r.pages.map(p => `
@@ -877,7 +877,14 @@ $('#btn-export').addEventListener('click', () => {
 
 // ============ Catálogo entrante ============
 function escapeHtml(s) {
-  return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // String(s ?? '') — NO `s || ''`: con un número, array o booleano el `||` los
+  // dejaba pasar tal cual y `.replace` no existe -> TypeError que abortaba el
+  // render entero (los números de pedido y los precios rompían pantallas
+  // completas). Y con `||` el 0 se convertía en '' (stock 0 salía vacío).
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function loadCatalogoEntrante() {
@@ -900,7 +907,7 @@ async function loadCatalogoEntrante() {
       const fn = escapeHtml(it.filename);
       const marcaWarn = it.revisar_marca
         ? '<span class="entrante-warn">REVISAR marca</span>' : '';
-      const talleWarn = !it.talles_sugeridos
+      const talleWarn = !it.talles_sugeridos?.length
         ? `<span class="entrante-warn">talle: ${escapeHtml(it.talle_original) || 'completar'}</span>` : '';
       return `
       <div class="entrante-card" data-filename="${esc(fn)}">

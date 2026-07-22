@@ -61,8 +61,13 @@
       </div>
       {% endfor %}
       <div style="display:flex;justify-content:space-between;margin-top:18px;font-size:16px;font-weight:700">
-        <span>Total</span><span>{{ cart['subtotal'] | ars }}</span>
+        <span>Total</span><span id="total-final">{{ cart['subtotal'] | ars }}</span>
       </div>
+      {% if cart['price_changed'] %}
+      <p style="color:#dca06a;font-size:12px;margin-top:10px">
+        Algunos precios cambiaron desde que agregaste los productos. El total de arriba es el vigente.
+      </p>
+      {% endif %}
     </aside>
   </div>
   {% endif %}
@@ -94,6 +99,19 @@
     try{
       const r=await fetch('/api/checkout/create-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const data=await r.json(); if(!r.ok) throw new Error(data.detail||'Error');
+
+      // El monto se recalcula server-side al crear el intent. Si cambió respecto
+      // de lo que el cliente tiene en pantalla (el panel pudo repreciar), hay que
+      // avisarlo ANTES de cobrar: si no, paga viendo un número y se le debita otro.
+      const esperado = {{ cart['subtotal_raw'] | default(0) }};
+      const aCobrar = parseFloat(data.amount);
+      if (esperado && Math.abs(aCobrar - esperado) > 0.5) {
+        const fmt = n => '$ ' + Math.round(n).toLocaleString('es-AR');
+        msg.style.color = '#dca06a';
+        msg.textContent = `Atención: el precio se actualizó a ${fmt(aCobrar)} (antes ${fmt(esperado)}). Revisá antes de pagar.`;
+        document.getElementById('total-final').textContent = fmt(aCobrar);
+      }
+
       clientSecret=data.client_secret; orderNumber=data.order_number; orderToken=data.order_token;
       stripe=Stripe(data.publishable_key);
       elements=stripe.elements({clientSecret});

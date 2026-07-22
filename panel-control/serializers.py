@@ -90,6 +90,9 @@ def order_to_tn(o: Order) -> dict:
         "contact_name": o.contact_name,
         "contact_email": o.email,
         "contact_phone": o.contact_phone,
+        # Sin esto el operador no tiene a dónde mandar el pedido: el checkout
+        # pide calle/ciudad/CP pero nada los exponía. El front ya los esperaba.
+        "shipping_address": o.shipping_address or {},
         "products": [
             {
                 "product_id": it.product_id,

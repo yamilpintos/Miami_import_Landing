@@ -96,6 +96,32 @@ def _release_stock(db: Session, order: Order) -> None:
     order.stock_reserved = False
 
 
+def _try_reserve(db: Session, order: Order) -> list[str]:
+    """Intenta (re)tomar el stock de una orden. Devuelve lo que NO alcanzó.
+
+    Se usa cuando llega un pago acreditado sobre una orden cuya reserva ya se
+    había soltado. Si falta aunque sea una unidad, no se descuenta NADA y se
+    devuelve la lista de faltantes para que el operador lo resuelva a mano.
+    """
+    faltantes: list[str] = []
+    tomados: list[tuple[Variant, int]] = []
+    for it in sorted(order.items, key=lambda x: x.variant_id or 0):
+        if not it.variant_id:
+            continue
+        v = db.get(Variant, it.variant_id, with_for_update=True)
+        if not v or it.quantity > (v.stock or 0):
+            faltantes.append(it.product_name or f"variante {it.variant_id}")
+            continue
+        tomados.append((v, it.quantity))
+
+    if faltantes:
+        return faltantes           # todo o nada: no se descuenta parcial
+    for v, qty in tomados:
+        v.stock = (v.stock or 0) - qty
+    order.stock_reserved = True
+    return []
+
+
 # Minutos tras los cuales una orden pending con stock reservado se considera
 # abandonada. Stripe NO cancela solo los PaymentIntents, así que sin este
 # barrido la reserva quedaría para siempre y agotaría el inventario.
@@ -159,6 +185,38 @@ def _create_intent_once(body: dict, request: Request, db: Session,
     if not cart or not cart.items:
         raise HTTPException(400, "El carrito está vacío")
 
+    # --- Reusar la orden pendiente de este mismo carrito ---------------------
+    # Sin esto, cada click en "Continuar al pago" creaba una orden NUEVA y
+    # reservaba stock de nuevo: el cliente se autobloqueaba ("sin stock" sobre
+    # su propia reserva), podía terminar pagando dos veces, y cualquiera podía
+    # agotar el catálogo entero repitiendo la llamada.
+    vigente = (db.query(Order)
+               .filter(Order.cart_id == cart.id,
+                       Order.payment_status == "pending",
+                       Order.stock_reserved.is_(True),
+                       Order.created_at >= datetime.now(timezone.utc)
+                       - timedelta(minutes=_RESERVATION_TTL_MIN))
+               .order_by(Order.id.desc())
+               .first())
+    if vigente:
+        pay = vigente.payments[0] if vigente.payments else None
+        if pay and pay.stripe_payment_intent_id:
+            try:
+                intent = stripe.PaymentIntent.retrieve(pay.stripe_payment_intent_id)
+                if intent.get("status") in ("requires_payment_method",
+                                            "requires_confirmation",
+                                            "requires_action"):
+                    return {
+                        "client_secret": intent.client_secret,
+                        "publishable_key": settings.STRIPE_PUBLISHABLE_KEY,
+                        "order_number": vigente.number,
+                        "order_token": vigente.public_token,
+                        "amount": f"{vigente.total:.2f}",
+                        "reused": True,
+                    }
+            except stripe.StripeError:
+                pass  # no se pudo recuperar: seguimos y creamos uno nuevo
+
     raw_email = (body.get("email") or (user.email if user else "") or "").strip()
     if user:
         # Para usuarios logueados manda la sesión, no el body: si no, uno puede
@@ -183,7 +241,19 @@ def _create_intent_once(body: dict, request: Request, db: Session,
             db.rollback()
             name = v.product.name if v and v.product else "un producto"
             raise HTTPException(409, f"Sin stock suficiente de {name}")
-        price = v.price or Decimal("0")
+        name = v.product.name if v.product else "un producto"
+        # El carrito puede tener semanas (la cookie dura 30 días): revalidar que
+        # el producto siga a la venta, no solo que tenga stock.
+        if not v.visible or not v.product or not v.product.published:
+            db.rollback()
+            raise HTTPException(409, f"{name} ya no está disponible")
+        price = v.price
+        # Un precio nulo o 0 en un carrito mixto regalaba ese ítem: el total
+        # seguía siendo > 0 por los demás, así que pasaba el control de abajo.
+        if price is None or price <= 0 or not price.is_finite():
+            db.rollback()
+            log.error("Variante %s con precio inválido (%s): no se puede vender", v.id, price)
+            raise HTTPException(409, f"{name} no tiene precio válido")
         line = price * it.quantity
         subtotal += line
         snapshot.append((v, it.quantity, price, line))
@@ -374,11 +444,31 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             return {"received": True, "review": True}  # NO despachar
 
         if order.payment_status != "paid":
+            # Normalmente el stock ya está reservado desde el create-intent. Pero
+            # si la reserva se soltó (pago rechazado y reintentado con otra
+            # tarjeta, o expiración por el barrido), hay que RE-TOMARLA antes de
+            # dar la orden por despachable: si no, se cobra mercadería que ya se
+            # le vendió a otro.
+            if not order.stock_reserved:
+                faltantes = _try_reserve(db, order)
+                if faltantes:
+                    log.error("Orden %s pagada SIN stock disponible: %s",
+                              order.id, ", ".join(faltantes))
+                    order.payment_status = "paid"
+                    order.status = "backorder"     # cobrado, NO despachar
+                    payment.status = "paid"
+                    payment.error_message = ("Pago acreditado sin stock: "
+                                             + ", ".join(faltantes))
+                    db.add(AuditLog(user_id=order.user_id, action="paid_without_stock",
+                                    entity="order", entity_id=str(order.id)))
+                    if not _commit():
+                        return {"received": True, "duplicate": True}
+                    return {"received": True, "backorder": True}
+
             order.payment_status = "paid"
             order.status = "processing"
             payment.status = "paid"
             payment.raw = {"event": etype, "event_id": event_id}
-            # El stock ya se reservó al crear el intent: NO se vuelve a descontar.
             # Vaciar exactamente el carrito que originó la orden (también el de
             # invitados, que antes quedaba lleno y llevaba a pagar dos veces).
             if order.cart_id:
@@ -402,9 +492,14 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         payment.status = "failed"
         payment.error_message = (obj.get("last_payment_error") or {}).get("message")
         order.payment_status = "failed"
+        # OJO: en Stripe un `payment_failed` NO es terminal — el mismo
+        # PaymentIntent vuelve a `requires_payment_method` y el cliente reintenta
+        # con otra tarjeta. Por eso acá NO se libera el stock: si se liberaba, el
+        # reintento exitoso cobraba mercadería ya vendida a otro. La reserva se
+        # suelta solo en `canceled` o cuando la vence el barrido.
         if etype == "payment_intent.canceled":
             order.status = "cancelled"
-        _release_stock(db, order)  # devolver lo reservado
+            _release_stock(db, order)
         db.add(AuditLog(user_id=order.user_id, action="payment_failed",
                         entity="order", entity_id=str(order.id)))
         if not _commit():

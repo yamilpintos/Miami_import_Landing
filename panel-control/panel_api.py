@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import io
+import logging
 import re
 import secrets
 import unicodedata
@@ -32,6 +33,8 @@ from core.models import (
 from core.sanitize import clean_description
 from serializers import order_to_tn, product_to_tn
 
+log = logging.getLogger("panel_api")
+
 # Todo el panel exige sesión de admin.
 router = APIRouter(prefix="/api", tags=["panel"], dependencies=[Depends(get_current_admin)])
 
@@ -44,6 +47,18 @@ STORE_STATIC = Path(__file__).resolve().parent.parent / "web-tienda" / "static"
 def _strip_accents(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
 
+
+
+def _precio_valido(raw) -> Decimal:
+    """Convierte a Decimal validando. Sin esto, "NaN", "Infinity", negativos y
+    "1e999" entraban a la base y de ahí al monto que se le cobra al cliente."""
+    try:
+        d = Decimal(str(raw))
+    except (InvalidOperation, TypeError, ValueError):
+        raise HTTPException(400, "Precio inválido")
+    if not d.is_finite() or d <= 0 or d > Decimal("100000000"):
+        raise HTTPException(400, "Precio fuera de rango")
+    return d.quantize(Decimal("0.01"))
 
 def slugify(text: str, max_len: int = 80) -> str:
     t = _strip_accents(text or "").lower()
@@ -201,10 +216,7 @@ def add_variant(pid: int, body: dict, db: Session = Depends(get_db)):
     # Precio: el del body, o el de la primera variante existente.
     price = None
     if body.get("price") not in (None, ""):
-        try:
-            price = Decimal(str(body["price"]))
-        except (InvalidOperation, TypeError, ValueError):
-            raise HTTPException(400, "Precio inválido")
+        price = _precio_valido(body["price"])
     base = p.variants[0] if p.variants else None
     if price is None:
         price = base.price if base else Decimal("0")
@@ -247,10 +259,22 @@ def rotate_product_image(pid: int, image_id: int, body: dict, db: Session = Depe
     except ImportError:
         raise HTTPException(503, "Falta Pillow para rotar imágenes")
 
-    # Descargar la actual, rotar y volver a subir con nombre nuevo.
+    # Se lee de `src`, NO de la property `url`: `url` devuelve local_path si
+    # existe (las fotos migradas de TN tienen "/static/..." ahí, que no es
+    # descargable) y además es de solo lectura, así que no se le puede asignar.
+    origen = img.src or ""
+    bucket = (settings.SUPABASE_URL or "").rstrip("/")
+    if not (bucket and origen.startswith(bucket)):
+        # Allow-list del origen: evita convertir esto en un SSRF si alguna vez
+        # se permite cargar imágenes por URL arbitraria.
+        raise HTTPException(400, "Solo se pueden rotar imágenes de nuestro bucket")
+
     try:
-        resp = requests.get(img.url, timeout=30)
+        resp = requests.get(origen, timeout=30, allow_redirects=False)
         resp.raise_for_status()
+        if len(resp.content) > MAX_IMAGE_BYTES:
+            raise HTTPException(413, "La imagen es demasiado grande")
+        Image.MAX_IMAGE_PIXELS = 40_000_000  # anti bomba de descompresión
         src = Image.open(io.BytesIO(resp.content))
         fmt = (src.format or "JPEG").upper()
         if fmt not in ("JPEG", "PNG", "WEBP"):
@@ -275,8 +299,9 @@ def rotate_product_image(pid: int, image_id: int, body: dict, db: Session = Depe
     except RuntimeError as exc:
         raise HTTPException(502, f"No se pudo guardar la imagen rotada: {exc}")
 
-    old_path = storage.path_from_url(img.url)
-    img.url = new_url
+    old_path = storage.path_from_url(img.src)
+    img.src = new_url          # `url` es property de solo lectura
+    img.local_path = None      # la copia local vieja ya no aplica
     db.commit()
     if old_path:
         try:
@@ -307,7 +332,13 @@ def update_variant_stock(pid: int, vid: int, body: dict, db: Session = Depends(g
     v = db.get(Variant, vid)
     if not v or v.product_id != pid:
         raise HTTPException(404, "Variante no encontrada")
-    v.stock = int(body.get("stock", 0))
+    try:
+        nuevo = int(body.get("stock", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Stock inválido")
+    if nuevo < 0:
+        raise HTTPException(400, "El stock no puede ser negativo")
+    v.stock = nuevo
     db.commit()
     return {"ok": True, "stock": v.stock}
 
@@ -317,14 +348,20 @@ def update_variant(pid: int, vid: int, body: dict, db: Session = Depends(get_db)
     v = db.get(Variant, vid)
     if not v or v.product_id != pid:
         raise HTTPException(404, "Variante no encontrada")
-    if "stock" in body:
-        v.stock = int(body["stock"])
-    if "price" in body:
-        v.price = Decimal(str(body["price"]))
-    if "sku" in body:
-        v.sku = body["sku"]
-    if "promotional_price" in body and body["promotional_price"] not in (None, ""):
-        v.promotional_price = Decimal(str(body["promotional_price"]))
+    try:
+        if "stock" in body:
+            stock = int(body["stock"])
+            if stock < 0:
+                raise HTTPException(400, "El stock no puede ser negativo")
+            v.stock = stock
+        if "price" in body:
+            v.price = _precio_valido(body["price"])
+        if "sku" in body:
+            v.sku = (str(body["sku"]) or "")[:120] or None
+        if "promotional_price" in body and body["promotional_price"] not in (None, ""):
+            v.promotional_price = _precio_valido(body["promotional_price"])
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Valor inválido")
     db.commit()
     return {"ok": True}
 
@@ -408,10 +445,7 @@ async def create_product(
     handle = unique_handle(db, base_handle)
     sku_base = re.sub(r"[^A-Z0-9]", "", _strip_accents(f"{brand}{name}").upper())[:30] or "PROD"
 
-    try:
-        precio_num = Decimal(str(price))
-    except Exception:
-        raise HTTPException(400, "Precio inválido")
+    precio_num = _precio_valido(price)
     rate = Decimal(str(current_usd_rate(db)))
     if convertir_a_ars:
         usd_val = precio_num
@@ -496,6 +530,12 @@ def set_order_status(oid: int, body: dict, db: Session = Depends(get_db)):
     new = body.get("status")
     if new not in ORDER_STATUSES:
         raise HTTPException(400, f"Estado inválido. Opciones: {', '.join(ORDER_STATUSES)}")
+    # "refunded" solo puede salir del endpoint de reembolso, que sí le pide la
+    # plata a Stripe. Marcarlo a mano dejaba al cliente sin su devolución y con
+    # el pedido figurando como reembolsado (contracargo asegurado a los 60 días).
+    if new == "refunded":
+        raise HTTPException(409, "Usá el botón de reembolso: marcarlo a mano no "
+                                 "devuelve el dinero en Stripe")
     o.status = new
     db.commit()
     return {"ok": True, "status": o.status}
@@ -507,9 +547,18 @@ def refund_order(oid: int, db: Session = Depends(get_db)):
     o = db.get(Order, oid)
     if not o:
         raise HTTPException(404, "Pedido no encontrado")
+    # Validar el ESTADO antes que la config: reembolsar algo no cobrado es un
+    # error de operación, no de configuración, y el mensaje tiene que decirlo.
+    # Sin este control se llamaba a Stripe sobre órdenes pendientes o ya
+    # reembolsadas y el error crudo de Stripe volvía al cliente.
+    if o.payment_status == "refunded":
+        return {"ok": True, "already": True, "status": "refunded"}
+    if o.payment_status != "paid":
+        raise HTTPException(409, f"La orden no está pagada (estado: {o.payment_status})")
     if not settings.STRIPE_SECRET_KEY:
         raise HTTPException(503, "Stripe no está configurado")
-    from core.models import Payment
+
+    from core.models import AuditLog, Payment
     payment = (
         db.query(Payment).filter(Payment.order_id == o.id,
                                  Payment.stripe_payment_intent_id.isnot(None))
@@ -520,17 +569,27 @@ def refund_order(oid: int, db: Session = Depends(get_db)):
     import stripe
     stripe.api_key = settings.STRIPE_SECRET_KEY
     try:
-        refund = stripe.Refund.create(payment_intent=payment.stripe_payment_intent_id)
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Error de Stripe: {e}")
+        refund = stripe.Refund.create(
+            payment_intent=payment.stripe_payment_intent_id,
+            # Doble click = un solo reembolso, no dos.
+            idempotency_key=f"refund-order-{o.id}",
+        )
+    except stripe.StripeError as e:
+        log.exception("Stripe rechazó el reembolso de la orden %s", o.id)
+        raise HTTPException(502, "No se pudo reembolsar. Revisá el panel de Stripe.") from e
+
     payment.status = "refunded"
     o.payment_status = "refunded"
     o.status = "refunded"
-    # Reponer stock
-    for it in o.items:
-        v = db.get(Variant, it.variant_id) if it.variant_id else None
-        if v:
-            v.stock += it.quantity
+    # Reponer stock una sola vez. Dejar stock_reserved en True hacía que un
+    # `canceled` tardío volviera a sumar las mismas unidades (stock fantasma).
+    if o.stock_reserved:
+        for it in o.items:
+            v = db.get(Variant, it.variant_id, with_for_update=True) if it.variant_id else None
+            if v:
+                v.stock = (v.stock or 0) + it.quantity
+        o.stock_reserved = False
+    db.add(AuditLog(action="order_refunded", entity="order", entity_id=str(o.id)))
     db.commit()
     return {"ok": True, "refund_id": refund.id, "status": "refunded"}
 

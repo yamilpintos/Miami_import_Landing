@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import re
+import secrets
 import shutil
 import unicodedata
 from pathlib import Path
@@ -36,7 +37,13 @@ SUBIDOS_DIR = ENTRANTE_DIR / "subidos"
 DESCARTADOS_DIR = ENTRANTE_DIR / "descartados"
 
 _IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
-_MAX_BYTES = 12 * 1024 * 1024
+_MAX_BYTES = 8 * 1024 * 1024      # igual que el alta: una foto mas grande
+                                  # entraba a la bandeja y despues no se podia publicar
+_MAX_FILES = 40                   # por request
+_MAX_DIR_BYTES = 300 * 1024 * 1024
+# Firmas binarias (JPEG, PNG, WEBP/RIFF): que la extension diga .jpg no
+# prueba que el contenido sea una imagen.
+_IMAGE_MAGIC = (b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n", b"RIFF")
 
 _BRANDS_CONOCIDAS = [
     "Off-White", "Balenciaga", "Palm Angels", "Diesel", "Boss", "Jacquemus",
@@ -139,7 +146,7 @@ def listar():
 @router.get("/img/{filename}")
 def imagen(filename: str):
     f = _safe_path(filename)
-    if not f.exists():
+    if not f.is_file() or f.suffix.lower() not in _IMG_EXTS:
         raise HTTPException(404, "No existe la imagen")
     return FileResponse(f)
 
@@ -151,6 +158,13 @@ async def subir_fotos(files: list[UploadFile] = File(...)):
     Se conserva el nombre original porque de ahí se deducen marca y talles.
     """
     _ensure_dirs()
+    if len(files) > _MAX_FILES:
+        raise HTTPException(413, f"Máximo {_MAX_FILES} fotos por vez")
+    # Tope de ocupacion: el disco de Render es chico y compartido.
+    actuales = sum(f.stat().st_size for f in ENTRANTE_DIR.iterdir() if f.is_file())
+    if actuales > _MAX_DIR_BYTES:
+        raise HTTPException(507, "La bandeja está llena: publicá o descartá las fotos pendientes")
+
     guardadas, rechazadas = [], []
     for up in files:
         try:
@@ -163,12 +177,20 @@ async def subir_fotos(files: list[UploadFile] = File(...)):
             continue
         data = await up.read()
         if len(data) > _MAX_BYTES:
-            rechazadas.append({"archivo": name, "motivo": "supera 12 MB"})
+            rechazadas.append({"archivo": name, "motivo": "supera 8 MB"})
             continue
-        if not data:
-            rechazadas.append({"archivo": name, "motivo": "archivo vacío"})
+        if len(data) < 64:
+            rechazadas.append({"archivo": name, "motivo": "archivo vacío o corrupto"})
             continue
-        (ENTRANTE_DIR / name).write_bytes(data)
+        # Firma binaria: que la extension diga .jpg no prueba que sea una imagen.
+        if not any(data.startswith(sig) for sig in _IMAGE_MAGIC):
+            rechazadas.append({"archivo": name, "motivo": "el contenido no es una imagen"})
+            continue
+        destino = ENTRANTE_DIR / name
+        if destino.exists():            # no pisar en silencio una foto pendiente
+            destino = ENTRANTE_DIR / f"{destino.stem}-{secrets.token_hex(3)}{destino.suffix}"
+        destino.write_bytes(data)
+        name = destino.name
         guardadas.append(name)
     return {"ok": True, "guardadas": guardadas, "rechazadas": rechazadas}
 
@@ -178,7 +200,9 @@ def descartar(filename: str = Form(...)):
     """Saca una foto de pendientes sin cargarla (la archiva en 'descartados')."""
     _ensure_dirs()
     f = _safe_path(filename)
-    if not f.exists():
+    # is_file() y no exists(): con exists() se podia pasar "subidos" y mover el
+    # directorio entero de fotos ya publicadas.
+    if not f.is_file() or f.suffix.lower() not in _IMG_EXTS:
         raise HTTPException(404, "No existe la imagen")
     shutil.move(str(f), str(DESCARTADOS_DIR / f.name))
     return {"ok": True}
@@ -188,5 +212,5 @@ def archivar_subida(filename: str) -> None:
     """Mueve la foto a 'subidos' una vez creado el producto."""
     _ensure_dirs()
     f = _safe_path(filename)
-    if f.exists():
+    if f.is_file():
         shutil.move(str(f), str(SUBIDOS_DIR / f.name))

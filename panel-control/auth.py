@@ -8,6 +8,8 @@ Autenticación del panel administrativo (JWT en cookie HttpOnly).
 """
 from __future__ import annotations
 
+import time
+
 import pyotp
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
@@ -19,7 +21,9 @@ from core.security import (
     create_access_token, decode_token, hash_password, password_needs_rehash,
     verify_password,
 )
-from core.web_security import clear_failures, is_locked, record_failure
+from core.web_security import (
+    clear_failures, is_locked, record_failure, record_soft_failure, soft_delay,
+)
 
 COOKIE_NAME = "mi_admin"
 ADMIN_TOKEN_MINUTES = 720  # 12 h de sesión de admin
@@ -106,15 +110,19 @@ def login(body: dict, response: Response, request: Request, db: Session = Depend
     lock_key = f"admin:{email}:{ip}"
     account_key = f"admin-account:{email}"
 
-    for key in (lock_key, account_key):
-        rem = is_locked(key)
-        if rem:
-            raise HTTPException(429, f"Demasiados intentos. Reintentá en {rem // 60 + 1} min.")
+    rem = is_locked(lock_key)
+    if rem:
+        raise HTTPException(429, f"Demasiados intentos. Reintentá en {rem // 60 + 1} min.")
+    # Por cuenta se aplica un RETARDO, no un bloqueo: bloquear por email dejaba
+    # que cualquiera que lo conozca eche al dueño del panel indefinidamente.
+    espera = soft_delay(account_key)
+    if espera:
+        time.sleep(espera)
 
     user = db.query(User).filter(User.email == email).one_or_none()
     if not user or not user.is_admin or not verify_password(password, user.password_hash):
         record_failure(lock_key)
-        record_failure(account_key)
+        record_soft_failure(account_key)
         db.add(AuditLog(action="admin_login_failed", entity="user", entity_id=email, ip=ip))
         db.commit()
         raise HTTPException(401, "Email o contraseña incorrectos")
@@ -128,7 +136,7 @@ def login(body: dict, response: Response, request: Request, db: Session = Depend
             return {"ok": False, "mfa_required": True}
         if not pyotp.TOTP(user.totp_secret).verify(code, valid_window=1):
             record_failure(lock_key)
-            record_failure(account_key)  # el MFA también cuenta por cuenta
+            record_soft_failure(account_key)  # el MFA también cuenta por cuenta
             db.add(AuditLog(user_id=user.id, action="admin_mfa_failed", entity="user",
                             entity_id=str(user.id), ip=ip))
             db.commit()
