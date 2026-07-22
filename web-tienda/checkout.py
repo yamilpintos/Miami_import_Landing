@@ -345,6 +345,84 @@ def _create_intent_once(body: dict, request: Request, db: Session,
     }
 
 
+def confirmar_pago_desde_stripe(db: Session, order: Order, pi_id: str) -> bool:
+    """Acredita una orden consultando el PaymentIntent DIRECTO a Stripe.
+
+    Es la red de seguridad del webhook: si el aviso de Stripe no llega (webhook
+    mal configurado, caído o demorado), el pedido quedaría en `pending` con la
+    plata cobrada. Cuando el cliente vuelve del pago, Stripe agrega
+    ?payment_intent=... a la URL de retorno, y con eso preguntamos el estado
+    real a la API.
+
+    NO se confía en los parámetros de la URL (el cliente los controla): sirven
+    solo como pista para ir a preguntarle a Stripe. Se verifica que el intent
+    sea el de ESTA orden, que esté efectivamente pagado, y que el monto y la
+    moneda coincidan con lo que esperábamos.
+
+    Devuelve True si dejó la orden pagada.
+    """
+    if not order or order.payment_status == "paid" or not pi_id:
+        return False
+    if not _stripe_ready():
+        return False
+
+    payment = (db.query(Payment)
+               .filter(Payment.order_id == order.id,
+                       Payment.stripe_payment_intent_id == pi_id)
+               .one_or_none())
+    if not payment:
+        log.warning("Intent %s no pertenece a la orden %s", pi_id, order.id)
+        return False
+
+    try:
+        intent = stripe.PaymentIntent.retrieve(pi_id)
+    except stripe.StripeError:
+        log.exception("No se pudo consultar el PaymentIntent %s", pi_id)
+        return False
+
+    if intent.get("status") != "succeeded":
+        return False
+
+    minor = settings.currency_minor_units
+    pagado = Decimal(intent.get("amount_received") or intent.get("amount") or 0) / minor
+    moneda = (intent.get("currency") or "").upper()[:3]
+    if pagado != payment.amount or moneda != (payment.currency or "").upper()[:3]:
+        log.error("Monto/moneda no coinciden al confirmar la orden %s: %s %s vs %s %s",
+                  order.id, pagado, moneda, payment.amount, payment.currency)
+        payment.status = "review"
+        db.add(AuditLog(user_id=order.user_id, action="payment_amount_mismatch",
+                        entity="order", entity_id=str(order.id)))
+        db.commit()
+        return False
+
+    # Si la reserva se soltó (pago demorado, barrido), re-tomar antes de dar la
+    # orden por despachable.
+    if not order.stock_reserved:
+        faltantes = _try_reserve(db, order)
+        if faltantes:
+            order.payment_status = "paid"
+            order.status = "backorder"
+            payment.status = "paid"
+            payment.error_message = "Pago acreditado sin stock: " + ", ".join(faltantes)
+            db.add(AuditLog(user_id=order.user_id, action="paid_without_stock",
+                            entity="order", entity_id=str(order.id)))
+            db.commit()
+            return True
+
+    order.payment_status = "paid"
+    order.status = "processing"
+    payment.status = "paid"
+    payment.raw = {"confirmado_por": "retorno_del_cliente", "intent": pi_id}
+    if order.cart_id:
+        db.query(CartItem).filter(CartItem.cart_id == order.cart_id).delete(
+            synchronize_session=False)
+    db.add(AuditLog(user_id=order.user_id, action="payment_succeeded_por_retorno",
+                    entity="order", entity_id=str(order.id)))
+    db.commit()
+    log.info("Orden %s acreditada por consulta directa a Stripe", order.id)
+    return True
+
+
 @checkout_router.post("/api/stripe/webhook")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     if not _stripe_ready():

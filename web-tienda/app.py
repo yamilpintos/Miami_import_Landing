@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 
 from auth_store import account_router, oauth_router
 from cart import cart_router, cart_summary, get_or_create_cart, resolve_cart
-from checkout import checkout_router
+from checkout import checkout_router, confirmar_pago_desde_stripe
 from core.config import settings
 from core.db import get_db, init_db
 from core.models import Category, Order, Product, User
@@ -282,6 +282,7 @@ def checkout_page(request: Request, db: Session = Depends(get_db),
 
 @app.get("/pedido/{number}", response_class=HTMLResponse)
 def order_confirmation(number: int, request: Request, t: str = "",
+                       payment_intent: str = "",
                        db: Session = Depends(get_db),
                        user: User | None = Depends(current_user)):
     """Confirmación de pedido.
@@ -300,6 +301,14 @@ def order_confirmation(number: int, request: Request, t: str = "",
                      and secrets.compare_digest(t, order.public_token))
     if not (is_owner or has_token):
         raise HTTPException(404, "Pedido no encontrado")
+
+    # Red de seguridad del webhook: si el pedido sigue pendiente y el cliente
+    # vuelve del pago, le preguntamos a Stripe cómo terminó en vez de esperar
+    # un aviso que puede no llegar nunca. El parámetro de la URL es solo la
+    # pista; la verdad la da la API de Stripe (ver confirmar_pago_desde_stripe).
+    if order.payment_status != "paid" and payment_intent:
+        if confirmar_pago_desde_stripe(db, order, payment_intent):
+            db.refresh(order)
 
     return templates.TemplateResponse(
         request, "order_confirmation.html",
