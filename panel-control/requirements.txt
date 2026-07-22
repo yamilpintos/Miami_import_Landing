@@ -16,6 +16,7 @@ argon2-cffi>=23.1          # hashing de contraseñas (Argon2id, OWASP)
 bcrypt>=4.1                # solo para verificar hashes viejos (legacy)
 PyJWT>=2.8
 pyotp>=2.9                 # MFA/TOTP para administradores
+qrcode>=7.4                # QR para configurar el MFA (SVG, sin dependencias extra)
 email-validator>=2.1
 bleach>=6.1                # sanitizar HTML de descripciones (anti-XSS almacenado)
 

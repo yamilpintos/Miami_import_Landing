@@ -10,6 +10,43 @@
 </head>
 <body>
 
+<!-- Configuración del segundo factor. Se muestra sola cuando el backend
+     responde que falta activarlo: sin esto el panel devuelve 403 en todo y
+     no había forma de salir del paso. -->
+<div id="mfa-setup" hidden
+     style="position:fixed;inset:0;z-index:9999;background:rgba(5,5,5,.97);
+            display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto">
+  <div style="max-width:460px;width:100%;background:#121212;border:1px solid rgba(185,155,99,.25);
+              border-radius:14px;padding:32px;text-align:center">
+    <h2 style="margin:0 0 8px;font-size:20px;color:#b99b63">Activá el segundo factor</h2>
+    <p style="color:#8a8578;font-size:14px;margin:0 0 20px">
+      Es obligatorio para entrar al panel. Escaneá el código con
+      <strong>Google Authenticator</strong>, Authy o 1Password.
+    </p>
+
+    <div id="mfa-qr" style="background:#fff;padding:14px;border-radius:10px;display:inline-block;
+                            min-height:180px;min-width:180px"></div>
+
+    <p style="color:#8a8578;font-size:12px;margin:16px 0 6px">
+      ¿No podés escanear? Cargá esta clave a mano en la app:
+    </p>
+    <code id="mfa-secret" style="display:block;font-size:14px;letter-spacing:2px;color:#f5f3ee;
+                                 background:#0d0d0d;padding:10px;border-radius:8px;word-break:break-all"></code>
+
+    <label style="display:block;margin:22px 0 6px;font-size:12px;color:#8a8578;
+                  text-transform:uppercase;letter-spacing:.5px">Código de 6 dígitos</label>
+    <input id="mfa-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+           style="width:100%;padding:12px;border-radius:9px;background:#0d0d0d;
+                  border:1px solid rgba(255,255,255,.12);color:#f5f3ee;font-size:20px;
+                  text-align:center;letter-spacing:6px"/>
+    <button id="mfa-confirm" class="btn-primary" style="width:100%;margin-top:16px">Activar y entrar</button>
+    <div id="mfa-err" style="min-height:18px;margin-top:12px;font-size:13px;color:#ff7a7a"></div>
+    <p style="color:#8a8578;font-size:12px;margin-top:10px">
+      Guardá la clave de arriba en un lugar seguro: si perdés el celular, es tu única forma de volver a entrar.
+    </p>
+  </div>
+</div>
+
 <!-- Barra superior (solo en celular): hamburguesa + marca -->
 <header class="mobile-topbar">
   <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Abrir menú">☰</button>

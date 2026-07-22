@@ -37,11 +37,26 @@ function fmtNum(n) {
 // el nombre del comprador ejecuta JS con la sesion del admin.
 const esc = escapeHtml;
 
+let MFA_ABIERTO = false;
+
 async function api(path, opts = {}) {
   const r = await fetch(API + path, opts);
-  if (r.status === 401 || r.status === 403) {
-    window.location.href = '/login';       // sesion vencida o sin permisos
+
+  if (r.status === 401) {
+    window.location.href = '/login';       // sesion vencida
     throw new Error('Sesion expirada');
+  }
+  if (r.status === 403) {
+    // 403 NO es sesion vencida: la sesion es valida pero falta activar el
+    // segundo factor. Mandarlo a /login dejaba al admin en un bucle sin salida
+    // (entra, todo da 403, vuelve al login) sin manera de configurarlo.
+    const cuerpo = await r.clone().json().catch(() => ({}));
+    if (/MFA|segundo factor/i.test(cuerpo.detail || '')) {
+      abrirSetupMfa();
+      throw new Error('Falta activar el segundo factor');
+    }
+    window.location.href = '/login';
+    throw new Error('Sin permisos');
   }
   if (!r.ok) {
     const t = await r.text();
@@ -1063,6 +1078,54 @@ $('#entrante-files')?.addEventListener('change', async (ev) => {
     status.textContent = '';
     toast('Error subiendo: ' + e.message, 'error');
   }
+});
+
+// ============ Activación del segundo factor (MFA) ============
+// El panel exige TOTP: sin activarlo, todos los endpoints responden 403. Esta
+// pantalla es la única salida de ese estado.
+async function abrirSetupMfa() {
+  if (MFA_ABIERTO) return;
+  MFA_ABIERTO = true;
+  const caja = $('#mfa-setup');
+  if (!caja) { window.location.href = '/login'; return; }
+  caja.hidden = false;
+
+  try {
+    const r = await fetch('/api/auth/totp/setup', { method: 'POST' });
+    if (!r.ok) throw new Error('No se pudo iniciar la configuración');
+    const d = await r.json();
+    $('#mfa-secret').textContent = d.secret || '';
+    // El SVG lo genera el backend; es contenido propio, no entrada de usuario.
+    $('#mfa-qr').innerHTML = d.qr_svg || '<span style="color:#555">Cargá la clave a mano</span>';
+    $('#mfa-code').focus();
+  } catch (e) {
+    $('#mfa-err').textContent = e.message;
+  }
+}
+
+$('#mfa-confirm')?.addEventListener('click', async () => {
+  const code = ($('#mfa-code').value || '').trim();
+  const err = $('#mfa-err');
+  err.textContent = '';
+  if (!/^\d{6}$/.test(code)) { err.textContent = 'Ingresá los 6 dígitos.'; return; }
+  const btn = $('#mfa-confirm');
+  btn.disabled = true; btn.textContent = 'Activando…';
+  try {
+    const r = await fetch('/api/auth/totp/enable', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ totp_code: code }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || 'Código inválido');
+    window.location.reload();          // ya con MFA activo, el panel carga
+  } catch (e) {
+    err.textContent = e.message;
+    btn.disabled = false; btn.textContent = 'Activar y entrar';
+  }
+});
+
+$('#mfa-code')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('#mfa-confirm').click();
 });
 
 // ============ Cerrar sesión ============

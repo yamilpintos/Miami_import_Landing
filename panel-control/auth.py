@@ -189,7 +189,22 @@ def totp_setup(admin: User = Depends(get_current_admin), db: Session = Depends(g
         db.commit()
     uri = pyotp.TOTP(admin.totp_secret).provisioning_uri(
         name=admin.email, issuer_name="MIAMI IMPORT Panel")
-    return {"secret": admin.totp_secret, "otpauth_uri": uri}
+
+    # QR generado en el server (SVG). Así no hace falta ninguna librería del
+    # navegador ni un CDN, que además la CSP del panel no permitiría.
+    qr_svg = ""
+    try:
+        import io as _io
+
+        import qrcode
+        import qrcode.image.svg as _svg
+        buf = _io.BytesIO()
+        qrcode.make(uri, image_factory=_svg.SvgPathImage).save(buf)
+        qr_svg = buf.getvalue().decode("utf-8")
+    except Exception:  # noqa: BLE001  (sin QR se puede cargar la clave a mano)
+        pass
+
+    return {"secret": admin.totp_secret, "otpauth_uri": uri, "qr_svg": qr_svg}
 
 
 @auth_router.post("/totp/enable")
