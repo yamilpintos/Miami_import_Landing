@@ -290,8 +290,14 @@
         <div class="eyebrow">Últimos pedidos</div>
         <h1>Pedidos</h1>
       </div>
-      <button id="btn-refresh-orders" class="btn-ghost">Actualizar</button>
+      <div style="display:flex;gap:8px">
+        <button id="btn-reconciliar" class="btn-secondary"
+                title="Consulta a Stripe si los pedidos pendientes ya fueron pagados">Verificar pagos pendientes</button>
+        <button id="btn-refresh-orders" class="btn-ghost">Actualizar</button>
+      </div>
     </header>
+
+    <div id="reconciliar-status" style="margin-bottom:12px;font-size:13px;color:var(--ink-mute)"></div>
 
     <div id="orders-list" class="orders-list">
       <div class="loading">Cargando pedidos…</div>

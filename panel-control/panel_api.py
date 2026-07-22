@@ -541,6 +541,78 @@ def set_order_status(oid: int, body: dict, db: Session = Depends(get_db)):
     return {"ok": True, "status": o.status}
 
 
+@router.post("/orders/reconciliar")
+def reconciliar_pagos(db: Session = Depends(get_db)):
+    """Revisa los pedidos pendientes contra Stripe y acredita los ya cobrados.
+
+    Existe porque el webhook puede no llegar (mal configurado, caído o
+    demorado) y en ese caso el pedido queda "pendiente" con la plata cobrada.
+    Acá se pregunta el estado real de cada PaymentIntent y se corrige.
+
+    Es seguro de correr las veces que haga falta: solo toca pedidos que Stripe
+    confirma como pagados y cuyo monto y moneda coinciden con lo esperado.
+    """
+    if not settings.STRIPE_SECRET_KEY:
+        raise HTTPException(503, "Stripe no está configurado")
+    import stripe
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    from core.models import AuditLog, CartItem, Payment
+
+    pendientes = (db.query(Order)
+                  .filter(Order.payment_status == "pending")
+                  .order_by(Order.id.desc()).limit(200).all())
+
+    acreditados, sin_pagar, revisar, errores = [], [], [], []
+    minor = settings.currency_minor_units
+
+    for o in pendientes:
+        pago = (db.query(Payment)
+                .filter(Payment.order_id == o.id,
+                        Payment.stripe_payment_intent_id.isnot(None))
+                .order_by(Payment.id.desc()).first())
+        if not pago:
+            continue
+        try:
+            intent = stripe.PaymentIntent.retrieve(pago.stripe_payment_intent_id)
+        except Exception as e:  # noqa: BLE001
+            errores.append({"pedido": o.number, "error": str(e)[:120]})
+            continue
+
+        if intent.get("status") != "succeeded":
+            sin_pagar.append({"pedido": o.number, "estado_stripe": intent.get("status")})
+            continue
+
+        cobrado = Decimal(intent.get("amount_received") or intent.get("amount") or 0) / minor
+        moneda = (intent.get("currency") or "").upper()[:3]
+        if cobrado != pago.amount or moneda != (pago.currency or "").upper()[:3]:
+            pago.status = "review"
+            revisar.append({"pedido": o.number, "cobrado": f"{cobrado} {moneda}",
+                            "esperado": f"{pago.amount} {pago.currency}"})
+            continue
+
+        o.payment_status = "paid"
+        o.status = "processing"
+        pago.status = "paid"
+        pago.raw = {"confirmado_por": "reconciliacion_manual"}
+        if o.cart_id:
+            db.query(CartItem).filter(CartItem.cart_id == o.cart_id).delete(
+                synchronize_session=False)
+        db.add(AuditLog(user_id=o.user_id, action="payment_reconciled",
+                        entity="order", entity_id=str(o.id)))
+        acreditados.append({"pedido": o.number, "monto": f"{cobrado} {moneda}"})
+
+    db.commit()
+    return {
+        "ok": True,
+        "revisados": len(pendientes),
+        "acreditados": acreditados,
+        "sin_pagar": sin_pagar,
+        "para_revisar": revisar,
+        "errores": errores,
+    }
+
+
 @router.post("/orders/{oid}/refund")
 def refund_order(oid: int, db: Session = Depends(get_db)):
     """Reembolsa el pago de Stripe asociado a la orden y marca el pedido."""

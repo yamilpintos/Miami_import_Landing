@@ -600,6 +600,37 @@ async function loadOrders() {
 
 $('#btn-refresh-orders').addEventListener('click', loadOrders);
 
+// Verifica contra Stripe si los pedidos "pendientes" ya fueron cobrados.
+// Necesario cuando el webhook no llega: sin esto la plata entra y el pedido
+// queda pendiente para siempre.
+$('#btn-reconciliar')?.addEventListener('click', async () => {
+  const btn = $('#btn-reconciliar');
+  const est = $('#reconciliar-status');
+  btn.disabled = true; btn.textContent = 'Consultando a Stripe…';
+  est.textContent = '';
+  try {
+    const r = await api('/api/orders/reconciliar', { method: 'POST' });
+    const ac = r.acreditados || [];
+    const partes = [`Revisados: ${r.revisados}`, `acreditados: ${ac.length}`];
+    if ((r.sin_pagar || []).length) partes.push(`sin pagar: ${r.sin_pagar.length}`);
+    if ((r.para_revisar || []).length) partes.push(`a revisar: ${r.para_revisar.length}`);
+    if ((r.errores || []).length) partes.push(`errores: ${r.errores.length}`);
+    est.textContent = partes.join(' · ');
+    if (ac.length) {
+      toast(`${ac.length} pedido(s) acreditado(s)`, 'success');
+      est.textContent += ' — pedidos: ' + ac.map(a => '#' + esc(a.pedido)).join(', ');
+    } else {
+      toast('No había pagos pendientes de acreditar', '');
+    }
+    loadOrders();
+  } catch (e) {
+    est.textContent = '';
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Verificar pagos pendientes';
+  }
+});
+
 // ============ WhatsApp helpers (usado desde Pedidos) ============
 let WA_TEMPLATES_CACHE = null;
 async function ensureTemplatesLoaded() {
