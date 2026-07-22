@@ -13,9 +13,13 @@
 <!-- Configuración del segundo factor. Se muestra sola cuando el backend
      responde que falta activarlo: sin esto el panel devuelve 403 en todo y
      no había forma de salir del paso. -->
+<!-- OJO: el `display` NO va en el style inline. Un `display:flex` acá le gana
+     al atributo `hidden` (que es solo display:none de la hoja del navegador) y
+     la pantalla quedaba visible SIEMPRE, tapando el panel. Lo pone el JS al
+     abrirla. -->
 <div id="mfa-setup" hidden
      style="position:fixed;inset:0;z-index:9999;background:rgba(5,5,5,.97);
-            display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto">
+            align-items:center;justify-content:center;padding:20px;overflow:auto">
   <div style="max-width:460px;width:100%;background:#121212;border:1px solid rgba(185,155,99,.25);
               border-radius:14px;padding:32px;text-align:center">
     <h2 style="margin:0 0 8px;font-size:20px;color:#b99b63">Activá el segundo factor</h2>

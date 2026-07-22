@@ -1109,6 +1109,7 @@ async function abrirSetupMfa() {
   const caja = $('#mfa-setup');
   if (!caja) { window.location.href = '/login'; return; }
   caja.hidden = false;
+  caja.style.display = 'flex';   // el display se aplica ACÁ, no en el HTML
 
   try {
     const r = await fetch('/api/auth/totp/setup', { method: 'POST' });
