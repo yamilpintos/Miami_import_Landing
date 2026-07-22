@@ -14,15 +14,17 @@ Abrir: http://localhost:8000
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
 import uvicorn
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from auth import auth_router, ensure_admin, get_current_admin, is_admin_request
@@ -82,6 +84,29 @@ app.include_router(panel_router)
 app.include_router(entrante_router)
 
 
+def _html_sin_cache(path: Path) -> HTMLResponse:
+    """Sirve un HTML del panel sin cachear, con los assets versionados por el
+    contenido del archivo.
+
+    El `?v=` escrito a mano se quedaba viejo cada vez que se tocaba el JS y el
+    navegador seguía ejecutando la versión anterior (así quedó el admin viendo
+    "sesión expirada" con el arreglo ya desplegado). Ahora el número sale del
+    hash del propio archivo: cambia solo cuando cambia el contenido.
+    """
+    html = path.read_text(encoding="utf-8")
+
+    def _v(m: "re.Match[str]") -> str:
+        asset = HERE / "static" / m.group(1).lstrip("/").removeprefix("static/")
+        try:
+            h = hashlib.md5(asset.read_bytes()).hexdigest()[:10]
+        except OSError:
+            return m.group(0)
+        return f'"{m.group(1)}?v={h}"'
+
+    html = re.sub(r'"(/static/[^"?]+\.(?:js|css))(?:\?[^"]*)?"', _v, html)
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+
 def _is_authed(request: Request) -> bool:
     """¿Esta request trae una sesión de ADMIN válida?
 
@@ -96,14 +121,14 @@ def _is_authed(request: Request) -> bool:
 def root(request: Request):
     if not _is_authed(request):
         return RedirectResponse("/login", status_code=302)
-    return FileResponse(HERE / "static" / "index.html")
+    return _html_sin_cache(HERE / "static" / "index.html")
 
 
 @app.get("/login")
 def login_page(request: Request):
     if _is_authed(request):
         return RedirectResponse("/", status_code=302)
-    return FileResponse(HERE / "static" / "login.html")
+    return _html_sin_cache(HERE / "static" / "login.html")
 
 
 @app.get("/api/health")
