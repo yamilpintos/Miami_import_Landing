@@ -2,57 +2,131 @@
 {% block title %}Pedido #{{ order.number }} — {{ STORE_NAME }}{% endblock %}
 
 {% block content %}
-<div class="mi-container" style="max-width:680px;padding:60px 24px;min-height:60vh;text-align:center">
-  {% set paid = order.payment_status == 'paid' %}
-  <div style="font-size:48px;margin-bottom:16px">{{ '✅' if paid else '⏳' }}</div>
-  <h1 style="font-size:28px;margin:0 0 10px">{{ '¡Gracias por tu compra!' if paid else 'Estamos confirmando tu pago' }}</h1>
-  <p style="color:rgba(245,243,238,.6)">Pedido <strong>#{{ order.number }}</strong>
-    {% if not paid %}<br>Apenas se acredite el pago vas a ver el pedido como pagado. Puede tardar unos segundos.{% endif %}</p>
+{% set paid = order.payment_status == 'paid' %}
+<div class="mi-container" style="max-width:640px;padding:64px 24px 80px;min-height:60vh;text-align:center">
 
-  {# Guardá este link: para una compra sin cuenta es la única forma de volver
-     a ver el pedido (el número solo no alcanza, hace falta el token). #}
-  <p style="color:rgba(245,243,238,.5);font-size:13px">
-    Guardá este enlace para seguir tu pedido:<br>
-    <a href="{{ request.url }}" style="color:var(--miami-gold,#b99b63);word-break:break-all">{{ request.url }}</a>
-  </p>
-
-  <p id="mi-pago-lento" hidden style="color:#dca06a;font-size:14px;margin-top:14px">
-    El pago está tardando más de lo normal en confirmarse. <strong>No vuelvas a pagar</strong>:
-    si el cobro salió, el pedido se acredita solo. Escribinos con el número
-    <strong>#{{ order.number }}</strong> si tenés dudas.
-  </p>
-
-  <div style="background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px;margin:32px 0;text-align:left;color:#f5f3ee">
-    {% for it in order.items %}
-    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-      <span>{{ it.product_name }}{% if it.variant_value %} · {{ it.variant_value }}{% endif %} <span style="color:rgba(245,243,238,.45)">x{{ it.quantity }}</span></span>
-      <span style="font-weight:600">{{ it.subtotal | ars }}</span>
+  {% if paid %}
+    <div style="width:72px;height:72px;margin:0 auto 24px;border-radius:50%;
+                background:rgba(46,160,90,.12);border:1px solid rgba(46,160,90,.45);
+                display:flex;align-items:center;justify-content:center">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#4ade80"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6L9 17l-5-5"/>
+      </svg>
     </div>
-    {% endfor %}
-    <div style="display:flex;justify-content:space-between;margin-top:16px;font-size:18px;font-weight:700">
-      <span>Total</span><span>{{ order.total | ars }}</span>
+    <span id="mi-pago-ok" hidden></span>{# marcador estable para el sondeo #}
+    <h1 style="font-size:30px;margin:0 0 12px;letter-spacing:.02em">¡Gracias por tu compra!</h1>
+    <p style="color:rgba(245,243,238,.65);font-size:15px;line-height:1.6;margin:0">
+      Tu pago fue aprobado y ya estamos preparando tu pedido.<br>
+      Te vamos a contactar para coordinar la entrega.
+    </p>
+  {% else %}
+    <div style="width:72px;height:72px;margin:0 auto 24px;border-radius:50%;
+                background:rgba(185,155,99,.10);border:1px solid rgba(185,155,99,.4);
+                display:flex;align-items:center;justify-content:center">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--miami-gold,#b99b63)"
+           stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9" opacity=".35"/><path d="M12 7v5l3 2"/>
+      </svg>
     </div>
-    <div style="margin-top:10px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,243,238,.5)">
-      Estado: {{ order.status }} · Pago: {{ order.payment_status }}</div>
+    <h1 style="font-size:28px;margin:0 0 12px">Estamos confirmando tu pago</h1>
+    <p style="color:rgba(245,243,238,.65);font-size:15px;line-height:1.6;margin:0">
+      Esto puede tardar unos segundos. No cierres esta página.
+    </p>
+    <p id="mi-pago-lento" hidden style="color:#dca06a;font-size:14px;margin-top:18px;line-height:1.6">
+      Está tardando más de lo normal. <strong>No vuelvas a pagar</strong>: si el cobro
+      salió, tu pedido se acredita igual. Escribinos mencionando el pedido
+      <strong>#{{ order.number }}</strong>.
+    </p>
+  {% endif %}
+
+  <div style="margin-top:28px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+              color:rgba(245,243,238,.45)">
+    Pedido <span style="color:var(--miami-gold,#b99b63);font-weight:700">#{{ order.number }}</span>
   </div>
 
-  <a href="/productos" style="display:inline-block;padding:14px 32px;border:1px solid var(--miami-gold,#b99b63);
-    color:var(--miami-gold,#b99b63);border-radius:999px;letter-spacing:.18em;text-transform:uppercase;font-size:12px">Seguir comprando</a>
+  {# Resumen #}
+  <div style="background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:14px;
+              padding:24px;margin:28px 0;text-align:left;color:#f5f3ee">
+    {% for it in order.items %}
+    <div style="display:flex;justify-content:space-between;gap:14px;padding:11px 0;
+                border-bottom:1px solid rgba(255,255,255,.06)">
+      <span style="font-size:14px">{{ it.product_name }}{% if it.variant_value %}
+        <span style="color:rgba(245,243,238,.5)"> · {{ it.variant_value }}</span>{% endif %}
+        <span style="color:rgba(245,243,238,.5)"> ×{{ it.quantity }}</span></span>
+      <span style="font-weight:600;font-size:14px;white-space:nowrap">{{ it.subtotal | ars }}</span>
+    </div>
+    {% endfor %}
+    <div style="display:flex;justify-content:space-between;margin-top:18px;font-size:18px;font-weight:700">
+      <span>Total</span><span style="color:var(--miami-gold,#b99b63)">{{ order.total | ars }}</span>
+    </div>
+    {% if order.shipping_address and order.shipping_address.get('street') %}
+    <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06);
+                font-size:13px;color:rgba(245,243,238,.6);line-height:1.6">
+      <strong style="color:#f5f3ee">Envío a:</strong>
+      {{ order.shipping_address.get('street') }} {{ order.shipping_address.get('number','') }}{% if order.shipping_address.get('floor') %}, {{ order.shipping_address.get('floor') }}{% endif %}<br>
+      {{ order.shipping_address.get('city','') }}{% if order.shipping_address.get('province') %}, {{ order.shipping_address.get('province') }}{% endif %} {{ order.shipping_address.get('zipcode','') }}
+    </div>
+    {% endif %}
+  </div>
+
+  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <a href="/productos" style="display:inline-block;padding:14px 30px;border-radius:999px;
+       background:var(--miami-gold,#b99b63);color:#0a0a0a;letter-spacing:.16em;
+       text-transform:uppercase;font-size:12px;font-weight:700">Seguir comprando</a>
+    {# El link de seguimiento se copia con un botón: mostrar la URL cruda con
+       todos los parámetros de Stripe quedaba ilegible y poco serio. #}
+    <button type="button" id="mi-copiar-link" style="padding:14px 26px;border-radius:999px;
+       background:none;border:1px solid rgba(245,243,238,.25);color:rgba(245,243,238,.8);
+       letter-spacing:.14em;text-transform:uppercase;font-size:12px;cursor:pointer">
+      Copiar link del pedido</button>
+  </div>
+  <p style="color:rgba(245,243,238,.4);font-size:12px;margin-top:14px">
+    Guardá el link si querés volver a ver este pedido más adelante.
+  </p>
 </div>
 
-{% if order.payment_status != 'paid' %}
 <script nonce="{{ csp_nonce }}">
-  // Refresca para reflejar el pago acreditado vía webhook.
-  // OJO: hay que conservar location.search — ahí viaja el token ?t=... que
-  // autoriza a ver el pedido. Sin él, un invitado recibía 404 en cada intento
-  // y quedaba para siempre en "estamos confirmando tu pago".
+  // La vuelta de Stripe agrega payment_intent, client_secret y redirect_status
+  // a la URL. Se limpian de la barra de direcciones apenas carga: son ruido
+  // técnico para el cliente (y el client_secret no debería quedar a la vista
+  // ni en el historial). El token ?t= sí se conserva: es lo que autoriza a ver
+  // el pedido.
+  // Se guarda la query ORIGINAL antes de limpiarla: el sondeo de abajo la
+  // necesita, porque el payment_intent es lo que permite confirmar el pago
+  // contra Stripe si el webhook no llegó.
+  window.MI_QUERY_ORIGINAL = location.search;
+  (function(){
+    var u = new URL(location.href);
+    var limpio = false;
+    ['payment_intent','payment_intent_client_secret','redirect_status','source_type'].forEach(function(p){
+      if (u.searchParams.has(p)) { u.searchParams.delete(p); limpio = true; }
+    });
+    if (limpio) history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+
+    var btn = document.getElementById('mi-copiar-link');
+    if (btn) btn.addEventListener('click', function(){
+      var link = location.origin + u.pathname + (u.search || '');
+      var listo = function(){ btn.textContent = 'Link copiado ✓';
+        setTimeout(function(){ btn.textContent = 'Copiar link del pedido'; }, 2500); };
+      if (navigator.clipboard) { navigator.clipboard.writeText(link).then(listo, listo); }
+      else { prompt('Copiá este link para seguir tu pedido:', link); }
+    });
+  })();
+</script>
+
+{% if not paid %}
+<script nonce="{{ csp_nonce }}">
+  // Mientras el pago no esté acreditado, reconsulta. Conserva location.search
+  // porque ahí viaja el token que autoriza a ver el pedido.
   let tries=0;
+  const qs = window.MI_QUERY_ORIGINAL || location.search;   // conserva el payment_intent
   const iv=setInterval(async()=>{
     tries++;
     if(tries>40){ clearInterval(iv); document.getElementById('mi-pago-lento')?.removeAttribute('hidden'); return; }
     try{
-      const r=await fetch(location.pathname+location.search,{headers:{'X-Requested-With':'poll'}});
-      if(r.ok){ const t=await r.text(); if(t.includes('Pago: paid')){ clearInterval(iv); location.reload(); } }
+      const r=await fetch(location.pathname+qs,{headers:{'X-Requested-With':'poll'}});
+      if(r.ok){ const t=await r.text(); if(t.includes('mi-pago-ok')){ clearInterval(iv); location.replace(location.pathname+location.search); } }
     }catch(e){ /* reintenta en el próximo tick */ }
   },3000);
 </script>
