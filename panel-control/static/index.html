@@ -100,14 +100,6 @@
       <span class="nav-icon">⌘</span>
       <span>WhatsApp</span>
     </a>
-    <a class="nav-item" href="#bot-mia" data-tab="bot-mia">
-      <span class="nav-icon">⌬</span>
-      <span>Bot Mía</span>
-    </a>
-    <a class="nav-item" href="#legales" data-tab="legales">
-      <span class="nav-icon">📄</span>
-      <span>Páginas legales</span>
-    </a>
     <a class="nav-item" href="#acciones" data-tab="acciones">
       <span class="nav-icon">⚡</span>
       <span>Acciones</span>
@@ -269,7 +261,6 @@
 
     <div class="panel">
       <p><b>1.</b> Elegí las fotos del stock nuevo y subilas acá. <b>2.</b> Cada una aparece como tarjeta: el <b>talle</b> y la <b>marca</b> se deducen del nombre del archivo — revisalos, completá <b>nombre</b> y <b>precio</b>, y tocá <b>Publicar en la tienda</b>.</p>
-      <p style="color:var(--ink-mute);font-size:13px;margin-top:6px;">Conviene nombrar los archivos así: <code>p07 - Off-White buzo - talle S-M-L.jpeg</code>. Las que dicen <b>REVISAR marca</b> no tienen logo claro: poné la marca a mano. Cotización USD→ARS actual: <b id="entrante-rate">—</b>.</p>
 
       <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <input type="file" id="entrante-files" accept="image/*" multiple hidden />
@@ -315,9 +306,6 @@
     </header>
 
     <div class="panel">
-      <p>Más métricas en el admin de Tiendanube:
-        <a href="https://miamiimport4.mitiendanube.com/admin/v2/statistics" target="_blank">Ver panel completo ↗</a>
-      </p>
       <p>Para descargar todo el catálogo + pedidos + variantes en Excel, click en el botón
         <b>Descargar Excel completo</b> del menú izquierdo.</p>
     </div>
@@ -394,7 +382,7 @@
     </header>
 
     <div class="panel">
-      <p>Plantillas pre-armadas que usás cuando hacés click en "WhatsApp" en la tab Pedidos. Placeholders disponibles: <code>{name}</code>, <code>{order}</code>, <code>{eta}</code>, <code>{carrier}</code>, <code>{tracking}</code> — se reemplazan automáticamente.</p>
+      <p>Plantillas pre-armadas que usás cuando hacés click en "WhatsApp" en la tab Pedidos.</p>
     </div>
 
     <div id="wa-templates-container">
@@ -402,59 +390,7 @@
     </div>
   </section>
 
-  <!-- ========= BOT MIA ========= -->
-  <section class="tab" data-tab="bot-mia">
-    <header class="page-header">
-      <div>
-        <div class="eyebrow">Configuración del bot</div>
-        <h1>Bot Mía</h1>
-      </div>
-      <button id="btn-save-bot-cfg" class="btn-primary">Guardar cambios</button>
-    </header>
 
-    <div class="panel">
-      <p>Acá editás lo que sabe Mía (el bot de Instagram/WhatsApp) cuando le preguntan. Si dejás vacío, el bot deriva a humano.</p>
-    </div>
-
-    <div class="form-card">
-      <label>
-        <b>SHIPPING_INFO</b> — Lo que Mía sabe sobre envíos
-        <textarea id="cfg-shipping" rows="6" placeholder="Operadores, plazos, costos, modalidades..."></textarea>
-      </label>
-    </div>
-
-    <div class="form-card">
-      <label>
-        <b>PAYMENT_INFO</b> — Medios de pago
-        <textarea id="cfg-payment" rows="4" placeholder="Mercado Pago, transferencia, etc."></textarea>
-      </label>
-    </div>
-
-    <div class="form-card">
-      <label>
-        <b>EXCHANGE_INFO</b> — Cambios y devoluciones
-        <textarea id="cfg-exchange" rows="4" placeholder="48hs hábiles, condiciones..."></textarea>
-      </label>
-    </div>
-  </section>
-
-  <!-- ========= LEGALES ========= -->
-  <section class="tab" data-tab="legales">
-    <header class="page-header">
-      <div>
-        <div class="eyebrow">HTMLs listos para pegar</div>
-        <h1>Páginas legales</h1>
-      </div>
-    </header>
-
-    <div class="panel">
-      <p>Estos HTMLs son las páginas legales de la tienda. Click en "Ver y copiar" para verlos y copiarlos al portapapeles.</p>
-    </div>
-
-    <div id="legal-pages-list">
-      <div class="loading">Cargando…</div>
-    </div>
-  </section>
 
   <!-- ========= ACCIONES ========= -->
   <section class="tab" data-tab="acciones">

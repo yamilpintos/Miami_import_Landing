@@ -49,6 +49,33 @@ def _strip_accents(s: str) -> str:
 
 
 
+def _rotar_bytes(content: bytes, grados: int) -> bytes:
+    """Rota una imagen en memoria. Si algo falla devuelve la original.
+
+    `expand=True` para que no recorte al girar 90/270. El signo es negativo
+    porque Pillow rota antihorario y en la interfaz el botón gira horario.
+    """
+    grados = grados % 360
+    if not grados:
+        return content
+    try:
+        from PIL import Image
+        Image.MAX_IMAGE_PIXELS = 40_000_000     # anti bomba de descompresión
+        src = Image.open(io.BytesIO(content))
+        fmt = (src.format or "JPEG").upper()
+        if fmt not in ("JPEG", "PNG", "WEBP"):
+            fmt = "JPEG"
+        out = src.rotate(-grados, expand=True)
+        if fmt == "JPEG" and out.mode in ("RGBA", "P"):
+            out = out.convert("RGB")
+        buf = io.BytesIO()
+        out.save(buf, format=fmt, quality=90)
+        return buf.getvalue()
+    except Exception:  # noqa: BLE001
+        log.exception("No se pudo rotar la imagen; se guarda sin girar")
+        return content
+
+
 def _precio_valido(raw) -> Decimal:
     """Convierte a Decimal validando. Sin esto, "NaN", "Infinity", negativos y
     "1e999" entraban a la base y de ahí al monto que se le cobra al cliente."""
@@ -229,6 +256,40 @@ def add_variant(pid: int, body: dict, db: Session = Depends(get_db)):
         visible=True,
     )
     db.add(v)
+    db.commit()
+    db.refresh(p)
+    return product_to_tn(p)
+
+
+@router.delete("/variants/{pid}/{vid}")
+def delete_variant(pid: int, vid: int, db: Session = Depends(get_db)):
+    """Quita un talle del producto.
+
+    No se borra si es el único que queda (un producto sin variantes no se puede
+    comprar ni mostrar precio) ni si está comprometido en un pedido pendiente
+    de pago, porque ahí hay stock reservado que quedaría sin dueño.
+    """
+    from core.models import Order, OrderItem
+
+    v = db.get(Variant, vid)
+    if not v or v.product_id != pid:
+        raise HTTPException(404, "Talle no encontrado")
+
+    p = db.get(Product, pid)
+    if p and len(p.variants) <= 1:
+        raise HTTPException(409, "Es el único talle del producto: no se puede quitar")
+
+    reservado = (db.query(OrderItem)
+                 .join(Order, Order.id == OrderItem.order_id)
+                 .filter(OrderItem.variant_id == vid,
+                         Order.payment_status == "pending",
+                         Order.stock_reserved.is_(True))
+                 .first())
+    if reservado:
+        raise HTTPException(409, "Hay un pedido pendiente con este talle. "
+                                 "Resolvelo antes de quitarlo.")
+
+    db.delete(v)
     db.commit()
     db.refresh(p)
     return product_to_tn(p)
@@ -438,6 +499,10 @@ async def create_product(
     publicado: bool = Form(True),
     images: List[UploadFile] = File([]),
     convertir_a_ars: bool = Form(False),
+    # Grados de giro por imagen, en el mismo orden que `images` ("0,90,0").
+    # El formulario ya lo mandaba, pero el backend no lo recibía: la foto que
+    # se veía derecha en la vista previa se subía igual de dada vuelta.
+    rotations: str = Form(""),
     db: Session = Depends(get_db),
 ):
     talles_list = [t.strip().upper() for t in re.split(r"[,;]", talles) if t.strip()]
@@ -477,9 +542,16 @@ async def create_product(
     db.flush()
 
     imgs_ok = 0
+    giros = [int(g) % 360 if g.strip().lstrip("-").isdigit() else 0
+             for g in (rotations or "").split(",")]
     for i, upfile in enumerate(images, 1):
         content = await upfile.read()
         safe_name = validate_image(upfile.filename or "", upfile.content_type or "", content)
+        # Aplicar el giro que el usuario le dio en la vista previa ANTES de
+        # guardar: si no, la foto se sube tal como salió de la cámara.
+        giro = giros[i - 1] if i - 1 < len(giros) else 0
+        if giro:
+            content = _rotar_bytes(content, giro)
         src, local_path = store_image_bytes(content, upfile.content_type or "", handle, safe_name)
         db.add(ProductImage(product_id=prod.id, src=src, local_path=local_path,
                             position=i, alt=name))
@@ -736,6 +808,23 @@ def usd_prices_get(db: Session = Depends(get_db)):
 
 @router.post("/usd_prices")
 def usd_prices_save(body: dict, db: Session = Depends(get_db)):
+    # La cotización se guarda ACÁ, en la tabla settings, que es de donde la lee
+    # current_usd_rate(). El botón "Guardar cotización" la mandaba a
+    # /api/bot_config (un JSON suelto del bot) y el recálculo nunca la veía:
+    # guardabas 1500 y seguía multiplicando por 1410.
+    if body.get("rate") is not None:
+        try:
+            rate = Decimal(str(body["rate"]))
+        except (InvalidOperation, TypeError, ValueError):
+            raise HTTPException(400, "Cotización inválida")
+        if not rate.is_finite() or rate <= 0 or rate > Decimal("1000000"):
+            raise HTTPException(400, "Cotización fuera de rango")
+        s = db.get(Setting, "usd_rate")
+        if not s:
+            s = Setting(key="usd_rate")
+            db.add(s)
+        s.value = {"rate": float(rate)}
+
     prices = body.get("prices") or {}
     saved = 0
     for pid, usd in prices.items():
@@ -750,7 +839,7 @@ def usd_prices_save(body: dict, db: Session = Depends(get_db)):
             v.usd_price = usd_d
         saved += 1
     db.commit()
-    return {"ok": True, "saved_count": saved}
+    return {"ok": True, "saved_count": saved, "rate": current_usd_rate(db)}
 
 
 @router.post("/usd_prices/from_current")

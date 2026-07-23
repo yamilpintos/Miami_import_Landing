@@ -73,7 +73,7 @@ async function api(path, opts = {}) {
 // poder entrar directo, compartir el link y usar atrás/adelante del navegador.
 const VALID_TABS = [
   'dashboard', 'productos', 'alta', 'catalogo-entrante', 'pedidos',
-  'estadisticas', 'precios-usd', 'whatsapp', 'bot-mia', 'legales', 'acciones',
+  'estadisticas', 'precios-usd', 'whatsapp', 'acciones',
 ];
 const TAB_LOADERS = {
   dashboard: loadDashboard,
@@ -83,8 +83,6 @@ const TAB_LOADERS = {
   estadisticas: loadStatsDetail,
   'precios-usd': loadUsdPrices,
   whatsapp: loadWaTemplates,
-  'bot-mia': loadBotConfig,
-  legales: loadLegalPages,
 };
 
 function currentTabFromHash() {
@@ -248,6 +246,8 @@ function renderProductModal(p) {
         <input class="stock-input" type="number" min="0" value="${Number(v.stock) || 0}" data-stock-input/>
         <button class="btn-stock" data-adjust="1" data-pid="${Number(p.id)}" data-vid="${Number(v.id)}">+</button>
         <span style="font-weight:600; min-width:80px; text-align:right">${fmtMoney(v.price)}</span>
+        <button class="btn-stock" data-del-variant="${Number(v.id)}" data-pid="${Number(p.id)}"
+                title="Quitar este talle" style="color:#ff7a7a">✕</button>
       </div>
     `;
   }).join('');
@@ -406,6 +406,18 @@ async function addVariant(pid, talle) {
     openProduct(pid);      // refrescar el modal con la variante nueva
   } catch (e) {
     toast('Error al agregar talle: ' + e.message, 'error');
+  }
+}
+
+async function deleteVariant(pid, vid) {
+  if (!confirm('¿Quitar este talle del producto? El stock que tenga se pierde.')) return;
+  try {
+    await api(`/api/variants/${pid}/${vid}`, { method: 'DELETE' });
+    toast('✓ Talle quitado', 'success');
+    PRODUCTS_CACHE = [];   // invalidar cache de la grilla
+    openProduct(pid);      // refrescar el modal
+  } catch (e) {
+    toast('No se pudo quitar: ' + e.message, 'error');
   }
 }
 
@@ -719,9 +731,11 @@ $('#btn-save-rate')?.addEventListener('click', async () => {
   const rate = parseFloat($('#usd-rate-input').value);
   if (!rate || rate <= 0) return toast('Cotización inválida', 'error');
   try {
-    await api('/api/bot_config', {
+    // A /api/usd_prices, NO a /api/bot_config: la cotización tiene que quedar
+    // en la base, que es de donde la lee el recálculo de precios.
+    await api('/api/usd_prices', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usd_rate: rate }),
+      body: JSON.stringify({ rate }),
     });
     toast('Cotización guardada: $' + fmtNum(rate), 'success');
     loadUsdPrices();
@@ -729,7 +743,7 @@ $('#btn-save-rate')?.addEventListener('click', async () => {
 });
 
 $('#btn-seed-usd')?.addEventListener('click', async () => {
-  if (!confirm('Esto va a leer todos los precios ARS actuales de Tiendanube y dividirlos por la cotización para guardar el USD equivalente. ¿Seguir?')) return;
+  if (!confirm('Esto va a leer los precios en pesos actuales y dividirlos por la cotización para guardar el USD equivalente. ¿Seguir?')) return;
   $('#usd-action-status').textContent = '⏳ Inicializando...';
   try {
     const r = await api('/api/usd_prices/from_current', { method: 'POST' });
@@ -753,7 +767,7 @@ $('#btn-sync-usd')?.addEventListener('click', async () => {
   if (!Object.keys(prices).length) return toast('No hay USD prices para sincronizar', 'error');
   if (!confirm(`Esto va a SUBIR ${Object.keys(prices).length} precios ARS a Tiendanube (USD × cotización). ¿Confirmar?`)) return;
 
-  $('#usd-action-status').textContent = '⏳ Guardando + subiendo...';
+  $('#usd-action-status').textContent = '⏳ Recalculando precios…';
   try {
     await api('/api/usd_prices', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -761,7 +775,7 @@ $('#btn-sync-usd')?.addEventListener('click', async () => {
     });
     const r = await api('/api/usd_prices/sync_to_tiendanube', { method: 'POST' });
     $('#usd-action-status').textContent = `✓ ${r.updated_products} productos · ${r.updated_variants} variantes actualizadas (cotización $${fmtNum(r.rate)}).`;
-    toast(`Precios sincronizados a Tiendanube`, 'success');
+    toast('Precios actualizados en la tienda', 'success');
   } catch (e) {
     $('#usd-action-status').textContent = '✗ Error: ' + e.message;
     toast('Error: ' + e.message, 'error');
@@ -807,70 +821,7 @@ $('#btn-save-wa')?.addEventListener('click', async () => {
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 });
 
-// ============ Bot Mía config (SHIPPING_INFO etc) ============
-async function loadBotConfig() {
-  try {
-    const cfg = await api('/api/bot_config');
-    $('#cfg-shipping').value = cfg.shipping_info || '';
-    $('#cfg-payment').value = cfg.payment_info || '';
-    $('#cfg-exchange').value = cfg.exchange_info || '';
-  } catch (e) { toast('Error: ' + e.message, 'error'); }
-}
 
-$('#btn-save-bot-cfg')?.addEventListener('click', async () => {
-  const body = {
-    shipping_info: $('#cfg-shipping').value,
-    payment_info: $('#cfg-payment').value,
-    exchange_info: $('#cfg-exchange').value,
-  };
-  try {
-    await api('/api/bot_config', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    toast('Configuración del bot guardada', 'success');
-  } catch (e) { toast('Error: ' + e.message, 'error'); }
-});
-
-// ============ Páginas legales ============
-async function loadLegalPages() {
-  try {
-    const r = await api('/api/legal_pages');
-    const cnt = $('#legal-pages-list');
-    if (!r.available) {
-      cnt.innerHTML = `<div class="panel" style="border-color:rgba(220,143,56,0.5);">
-        <p><b>⚠️ No encuentro la carpeta de páginas legales.</b></p>
-        <p>Esperaba: <code style="font-size:11px;">${esc(r.dir)}</code></p>
-        <p>Setea la env var <code>LEGAL_PAGES_DIR</code> en el <code>.env</code> apuntando a tu carpeta <code>PEGAR_EN_ADMIN/6-paginas_legales/</code>.</p>
-      </div>`;
-      return;
-    }
-    if (!r.pages.length) {
-      cnt.innerHTML = '<div class="loading">No hay HTMLs en ' + esc(r.dir) + '</div>';
-      return;
-    }
-    cnt.innerHTML = r.pages.map(p => `
-      <div class="form-card" style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <b>/${esc(p.name)}</b>
-          <small style="display:block;color:#888;">${esc(p.filename)} · ${(Number(p.size)/1024).toFixed(1)} KB</small>
-        </div>
-        <button class="btn-secondary" data-legal-name="${esc(p.name)}">Ver y copiar</button>
-      </div>
-    `).join('');
-    cnt.querySelectorAll('[data-legal-name]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        try {
-          const r2 = await api(`/api/legal_pages/${btn.dataset.legalName}`);
-          await navigator.clipboard.writeText(r2.html);
-          toast('HTML copiado al portapapeles ✓ pegalo en admin Tiendanube → Mi tienda → Páginas', 'success');
-        } catch (e) { toast('Error: ' + e.message, 'error'); }
-      });
-    });
-  } catch (e) {
-    $('#legal-pages-list').innerHTML = '<div class="loading">Error: ' + esc(e.message) + '</div>';
-  }
-}
 
 // ============ Acciones ============
 $('#btn-redeploy-bot')?.addEventListener('click', async () => {
@@ -958,7 +909,6 @@ async function loadCatalogoEntrante() {
   cnt.innerHTML = '<div class="loading">Cargando…</div>';
   try {
     const r = await api('/api/catalogo_entrante');
-    $('#entrante-rate').textContent = r.rate ? '$ ' + fmtNum(r.rate) : '—';
     if (!r.available) {
       cnt.innerHTML = `<div class="panel" style="border-color:rgba(220,143,56,0.5);">
         <p><b>⚠️ No encuentro la carpeta de catálogo entrante.</b></p>
@@ -1220,6 +1170,9 @@ document.addEventListener('click', ev => {
 
   const addv = t.closest('[data-add-variant]');
   if (addv) return addVariant(Number(addv.dataset.addVariant), addv.dataset.size);
+
+  const delv = t.closest('[data-del-variant]');
+  if (delv) return deleteVariant(Number(delv.dataset.pid), Number(delv.dataset.delVariant));
 
   const rot = t.closest('[data-rotate-preview]');
   if (rot) return rotatePreview(Number(rot.dataset.rotatePreview));

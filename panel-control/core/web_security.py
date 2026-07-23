@@ -152,6 +152,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         p = request.url.path
         if p.startswith(("/api/", "/auth/", "/cuenta", "/checkout")):
             resp.headers["Cache-Control"] = "no-store"
+        elif "text/html" in resp.headers.get("content-type", ""):
+            # Las páginas de catálogo muestran stock y precios que cambian desde
+            # el panel. Sin cabecera, el navegador y el proxy aplican caché
+            # heurística y siguen mostrando la versión vieja: se cambiaba el
+            # stock y la tienda no se enteraba. `no-cache` obliga a revalidar
+            # en cada visita (permite 304, así que no encarece la carga).
+            resp.headers.setdefault("Cache-Control", "no-cache, must-revalidate")
         # HSTS depende solo de no estar en desarrollo: atarlo también a
         # COOKIE_SECURE hacía que un error de config quitara las dos defensas
         # a la vez (cookies sin Secure Y sin forzar HTTPS).
