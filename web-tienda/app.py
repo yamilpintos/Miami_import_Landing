@@ -183,6 +183,58 @@ def health():
     return {"ok": True, "service": "web-tienda"}
 
 
+@app.get("/diag", response_class=HTMLResponse)
+def diag():
+    """Página de diagnóstico del dispositivo (sobre todo la tablet del local).
+
+    Usa JS a la vieja usanza (var, function, sin ?. ni ??) a propósito: si el
+    navegador es viejo y no entiende la sintaxis moderna del panel, ESTA página
+    igual corre y nos dice el ancho, el tipo de puntero y el navegador. Y el
+    botón prueba que los toques se registran.
+    """
+    return HTMLResponse("""<!doctype html><html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diagnóstico</title>
+<style>
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0a0a0a;color:#f5f3ee;
+       margin:0;padding:24px;line-height:1.6}
+  h1{color:#b99b63;font-size:22px}
+  .fila{background:#141414;border:1px solid #2a2a2a;border-radius:10px;padding:14px 16px;margin:10px 0}
+  .fila b{color:#b99b63;display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+  .fila span{font-size:16px;word-break:break-all}
+  button{margin-top:20px;width:100%;min-height:64px;font-size:18px;font-weight:700;
+         background:#b99b63;color:#0a0a0a;border:0;border-radius:12px}
+  #res{margin-top:14px;font-size:18px;text-align:center;min-height:26px;color:#4ade80}
+</style></head><body>
+  <h1>Diagnóstico de la tablet</h1>
+  <p>Sacale una captura a esta pantalla y mandámela. Después tocá el botón.</p>
+  <div class="fila"><b>Ancho de pantalla (CSS px)</b><span id="w">-</span></div>
+  <div class="fila"><b>Alto</b><span id="h">-</span></div>
+  <div class="fila"><b>Pantalla táctil (pointer)</b><span id="p">-</span></div>
+  <div class="fila"><b>Soporta sintaxis moderna</b><span id="mod">-</span></div>
+  <div class="fila"><b>Navegador (user agent)</b><span id="ua">-</span></div>
+  <button id="b" type="button">Tocá acá para probar</button>
+  <div id="res"></div>
+<script>
+  function set(id, val){ document.getElementById(id).textContent = val; }
+  set('w', window.innerWidth + ' px');
+  set('h', window.innerHeight + ' px');
+  var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  set('p', coarse ? 'SÍ, es táctil (coarse)' : 'no detecta táctil (fine)');
+  set('ua', navigator.userAgent);
+  // ¿entiende ?. y ?? (lo que usa el panel)?
+  var moderno = 'no';
+  try { eval('var o={a:1}; o?.a; (null ?? 1);'); moderno = 'SÍ'; } catch(e){ moderno = 'NO — este es el problema'; }
+  set('mod', moderno);
+  var n = 0;
+  document.getElementById('b').addEventListener('click', function(){
+    n = n + 1;
+    document.getElementById('res').textContent = 'Toque registrado ✓  (' + n + ')';
+  });
+</script>
+</body></html>""")
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, db: Session = Depends(get_db)):
     destacados = (
