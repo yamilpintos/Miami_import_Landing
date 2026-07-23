@@ -1085,14 +1085,21 @@ function posAgregar(vid) {
   posRenderCarrito();
 }
 
-function posCambiar(vid, delta) {
-  const it = POS_CARRITO.find(i => i.variant_id === vid);
+function posCambiar(clave, delta) {
+  const it = POS_CARRITO.find(i => posClave(i) === clave);
   if (!it) return;
   const nueva = it.cantidad + delta;
-  if (nueva < 1) { POS_CARRITO = POS_CARRITO.filter(i => i.variant_id !== vid); }
-  else if (nueva > it.stock) { return toast(`Solo quedan ${it.stock}`, 'error'); }
+  if (nueva < 1) { POS_CARRITO = POS_CARRITO.filter(i => posClave(i) !== clave); }
+  else if (!it.libre && nueva > it.stock) { return toast(`Solo quedan ${it.stock}`, 'error'); }
+  else if (nueva > 99) { return toast('Máximo 99 por ítem', 'error'); }
   else { it.cantidad = nueva; }
   posRenderCarrito();
+}
+
+// Clave estable de cada línea: los sueltos no tienen variant_id, así que
+// necesitan su propio identificador para poder sumarles o quitarles unidades.
+function posClave(i) {
+  return i.libre ? 'L' + i.uid : 'V' + i.variant_id;
 }
 
 function posRenderCarrito() {
@@ -1108,13 +1115,13 @@ function posRenderCarrito() {
   cont.innerHTML = POS_CARRITO.map(i => `
     <div class="pos-item">
       <div class="pos-item__txt">
-        <div class="pos-item__nombre">${esc(i.nombre)}</div>
-        <div class="pos-item__talle">Talle ${esc(i.talle)} · ${posMoney(i.precio)}</div>
+        <div class="pos-item__nombre">${esc(i.nombre)}${i.libre ? '<span class="pos-item__libre">suelto</span>' : ''}</div>
+        <div class="pos-item__talle">${i.libre ? '' : 'Talle ' + esc(i.talle) + ' · '}${posMoney(i.precio)}</div>
       </div>
       <div class="pos-item__qty">
-        <button type="button" data-qty="${Number(i.variant_id)}" data-delta="-1">−</button>
+        <button type="button" data-qty="${esc(posClave(i))}" data-delta="-1">−</button>
         <span>${i.cantidad}</span>
-        <button type="button" data-qty="${Number(i.variant_id)}" data-delta="1">+</button>
+        <button type="button" data-qty="${esc(posClave(i))}" data-delta="1">+</button>
       </div>
       <div class="pos-item__sub">${posMoney(i.precio * i.cantidad)}</div>
     </div>
@@ -1141,7 +1148,9 @@ async function posCobrar() {
       body: JSON.stringify({
         cliente,
         telefono: ($('#pos-telefono').value || '').trim(),
-        items: POS_CARRITO.map(i => ({ variant_id: i.variant_id, cantidad: i.cantidad })),
+        items: POS_CARRITO.map(i => (i.libre
+          ? { libre: true, nombre: i.nombre, precio: i.precio, cantidad: i.cantidad }
+          : { variant_id: i.variant_id, cantidad: i.cantidad })),
       }),
     });
     POS_VENTA = r;
@@ -1218,5 +1227,42 @@ document.addEventListener('click', ev => {
   const add = ev.target.closest('[data-add]');
   if (add) return posAgregar(Number(add.dataset.add));
   const qty = ev.target.closest('[data-qty]');
-  if (qty) return posCambiar(Number(qty.dataset.qty), Number(qty.dataset.delta));
+  if (qty) return posCambiar(qty.dataset.qty, Number(qty.dataset.delta));
+});
+
+
+// --- Ítem suelto: cobrar algo que no está en el catálogo ---
+let POS_UID = 0;
+
+function posAbrirLibre(abrir) {
+  const caja = $('#pos-libre');
+  caja.hidden = !abrir;
+  if (abrir) $('#pos-libre-nombre').focus();
+  else { $('#pos-libre-nombre').value = ''; $('#pos-libre-precio').value = ''; $('#pos-libre-cant').value = '1'; }
+}
+
+function posAgregarLibre() {
+  const nombre = ($('#pos-libre-nombre').value || '').trim();
+  const precio = parseFloat($('#pos-libre-precio').value);
+  const cant = parseInt($('#pos-libre-cant').value) || 1;
+
+  if (!nombre) { $('#pos-libre-nombre').focus(); return toast('Poné qué se vende', 'error'); }
+  if (!(precio > 0)) { $('#pos-libre-precio').focus(); return toast('Poné un precio válido', 'error'); }
+  if (cant < 1 || cant > 99) return toast('Cantidad entre 1 y 99', 'error');
+
+  POS_CARRITO.push({
+    libre: true, uid: ++POS_UID, variant_id: null,
+    nombre, talle: '', precio, stock: Infinity, cantidad: cant,
+  });
+  posRenderCarrito();
+  posAbrirLibre(false);
+  toast('Agregado a la venta', 'success');
+}
+
+$('#pos-abrir-libre')?.addEventListener('click', () => posAbrirLibre($('#pos-libre').hidden));
+$('#pos-libre-cerrar')?.addEventListener('click', () => posAbrirLibre(false));
+$('#pos-libre-agregar')?.addEventListener('click', posAgregarLibre);
+// Enter en el precio agrega directamente: en el mostrador se busca velocidad.
+$('#pos-libre-precio')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); posAgregarLibre(); }
 });

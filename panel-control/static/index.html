@@ -265,8 +265,32 @@
     <div class="pos-layout">
       <!-- Buscador + productos -->
       <div class="pos-catalogo">
-        <input id="pos-buscar" class="search pos-search" type="search"
-               placeholder="Buscar producto o marca…" autocomplete="off"/>
+        <div class="pos-barra">
+          <input id="pos-buscar" class="search pos-search" type="search"
+                 placeholder="Buscar producto o marca…" autocomplete="off"/>
+          <button type="button" id="pos-abrir-libre" class="pos-btn-libre">
+            + No está en el catálogo
+          </button>
+        </div>
+
+        <!-- Cobrar algo que no está cargado: descripción y precio a mano -->
+        <div id="pos-libre" class="pos-libre" hidden>
+          <div class="pos-libre__campos">
+            <label class="pos-label">¿Qué se vende?
+              <input id="pos-libre-nombre" type="text" placeholder="Ej: Cinturón de cuero" autocomplete="off"/>
+            </label>
+            <label class="pos-label">Precio
+              <input id="pos-libre-precio" type="number" inputmode="decimal" min="1" step="0.01" placeholder="0"/>
+            </label>
+            <label class="pos-label">Cantidad
+              <input id="pos-libre-cant" type="number" inputmode="numeric" min="1" max="99" value="1"/>
+            </label>
+          </div>
+          <div class="pos-libre__acciones">
+            <button type="button" id="pos-libre-agregar" class="btn-primary">Agregar a la venta</button>
+            <button type="button" id="pos-libre-cerrar" class="btn-ghost">Cancelar</button>
+          </div>
+        </div>
         <div id="pos-resultados" class="pos-grid">
           <div class="loading">Escribí para buscar, o esperá a que cargue el catálogo…</div>
         </div>

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import io
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -110,17 +110,42 @@ def crear_venta(body: dict, db: Session = Depends(get_db),
     email = str(body.get("email") or "").strip().lower()[:255]
     nota = str(body.get("nota") or "").strip()[:500]
 
-    # --- Validar y reservar stock, con el precio de la base --------------------
+    # --- Separar ítems del catálogo de los sueltos ----------------------------
+    # Los "sueltos" son cosas que no están cargadas (un accesorio, un arreglo,
+    # algo de última hora). No tienen stock que reservar y el precio lo pone el
+    # vendedor: es el ÚNICO caso donde el importe viene del request, y por eso
+    # se valida con rango y queda registrado en la auditoría.
     pedido: dict[int, int] = {}
+    sueltos: list[tuple[str, Decimal, int]] = []
     for it in items:
         try:
-            vid = int(it.get("variant_id"))
             qty = int(it.get("cantidad", 1))
         except (TypeError, ValueError):
-            raise HTTPException(400, "Ítem inválido")
+            raise HTTPException(400, "Cantidad inválida")
         if qty < 1 or qty > MAX_QTY:
             raise HTTPException(400, f"Cantidad inválida (1 a {MAX_QTY})")
+
+        if it.get("libre"):
+            nombre = str(it.get("nombre") or "").strip()[:200]
+            if not nombre:
+                raise HTTPException(400, "El ítem suelto necesita una descripción")
+            try:
+                precio = Decimal(str(it.get("precio")))
+            except (InvalidOperation, TypeError, ValueError):
+                raise HTTPException(400, f"Precio inválido en «{nombre}»")
+            if not precio.is_finite() or precio <= 0 or precio > Decimal("100000000"):
+                raise HTTPException(400, f"Precio fuera de rango en «{nombre}»")
+            sueltos.append((nombre, precio.quantize(Decimal("0.01")), qty))
+            continue
+
+        try:
+            vid = int(it.get("variant_id"))
+        except (TypeError, ValueError):
+            raise HTTPException(400, "Ítem inválido")
         pedido[vid] = pedido.get(vid, 0) + qty   # mismo talle dos veces = suma
+
+    if not pedido and not sueltos:
+        raise HTTPException(400, "La venta está vacía")
 
     subtotal = Decimal("0")
     snapshot = []
@@ -147,6 +172,12 @@ def crear_venta(body: dict, db: Session = Depends(get_db),
         subtotal += linea
         snapshot.append((v, qty, v.price, linea))
 
+    # Los sueltos van en la moneda de la tienda (no tienen variante que la fije).
+    for nombre, precio, qty in sueltos:
+        subtotal += precio * qty
+    if sueltos:
+        monedas.add(settings.CHECKOUT_CURRENCY.strip().lower())
+
     if len(monedas) > 1:
         db.rollback()
         raise HTTPException(409, "La venta mezcla productos en distintas monedas")
@@ -170,6 +201,12 @@ def crear_venta(body: dict, db: Session = Depends(get_db),
             product_name=v.product.name if v.product else "",
             variant_value=v.value, sku=v.sku,
             unit_price=precio, quantity=qty, subtotal=linea))
+    # Ítems sueltos: sin variante ni producto, así que no descuentan stock.
+    for nombre, precio, qty in sueltos:
+        orden.items.append(OrderItem(
+            variant_id=None, product_id=None,
+            product_name=nombre, variant_value=None, sku=None,
+            unit_price=precio, quantity=qty, subtotal=precio * qty))
     db.add(orden)
     try:
         db.commit()
@@ -180,6 +217,14 @@ def crear_venta(body: dict, db: Session = Depends(get_db),
 
     db.add(AuditLog(user_id=admin.id, action="pos_venta_creada",
                     entity="order", entity_id=str(orden.id)))
+    if sueltos:
+        # Rastro de quién puso qué precio a mano: es el único importe que no
+        # sale del catálogo, así que tiene que quedar auditado.
+        db.add(AuditLog(
+            user_id=admin.id, action="pos_items_sueltos",
+            entity="order", entity_id=str(orden.id),
+            detail={"items": [{"nombre": n, "precio": str(pr), "cantidad": q}
+                              for n, pr, q in sueltos]}))
     db.commit()
 
     base = settings.STORE_BASE_URL.rstrip("/")

@@ -250,3 +250,38 @@
   .pos-items{ max-height:none; }
   .pos-qr svg{ width:200px; height:200px; }
 }
+
+/* --- Ítem suelto: vender algo que no está en el catálogo ------------------- */
+.pos-barra{ display:flex; gap:10px; margin-bottom:14px; align-items:stretch; }
+.pos-barra .pos-search{ flex:1; margin-bottom:0; }
+
+.pos-btn-libre{
+  min-height:var(--tap); padding:0 20px; white-space:nowrap;
+  background:var(--bg-card); color:var(--ink);
+  border:2px dashed var(--rule-strong); border-radius:10px;
+  font-size:14px; font-weight:600; cursor:pointer;
+  transition:border-color .15s var(--ease), background .15s var(--ease);
+}
+.pos-btn-libre:active{ background:var(--bg-soft); border-color:var(--ink); }
+
+.pos-libre{
+  background:var(--bg-soft); border:1px solid var(--rule); border-radius:var(--radius);
+  padding:16px; margin-bottom:14px;
+}
+.pos-libre__campos{ display:grid; grid-template-columns:2fr 1fr 90px; gap:12px; }
+.pos-libre__campos .pos-label{ margin-bottom:0; }
+.pos-libre__acciones{ display:flex; gap:10px; margin-top:14px; }
+.pos-libre__acciones .btn-primary{ flex:1; }
+
+/* Marca visual para distinguirlo de un producto del catálogo */
+.pos-item__libre{
+  display:inline-block; margin-left:6px; padding:1px 7px; border-radius:5px;
+  background:var(--orange); color:#fff; font-size:10px; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; vertical-align:middle;
+}
+
+@media (max-width: 900px){
+  .pos-barra{ flex-direction:column; }
+  .pos-btn-libre{ width:100%; }
+  .pos-libre__campos{ grid-template-columns:1fr; }
+}
