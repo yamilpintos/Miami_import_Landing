@@ -82,31 +82,50 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. Tablet en horizontal (~900-1100px): menú lateral más angosto
-   -------------------------------------------------------------------------- */
-@media (min-width: 861px) and (max-width: 1100px){
-  .sidebar{ width:210px; padding:22px 14px; }
-  .main{ margin-left:210px; padding:26px 24px; }
-  .brand-name{ font-size:14px; }
-}
+   2. MENÚ HAMBURGUESA EN TODA LA TABLET (hasta 1100px), las dos orientaciones.
 
-/* --------------------------------------------------------------------------
-   3. Tablet en vertical (<=860px): menú en cajón, contenido a todo el ancho
-      (el drawer ya existe en style.css; acá solo se agranda para el dedo)
+   En una tablet de 8.7" horizontal (~890px de ancho CSS) una barra lateral fija
+   se come un tercio de la pantalla y deja el contenido apretado. Con el cajón
+   se gana toda la pantalla y el menú es un botón grande, igual en vertical y en
+   horizontal. Estas reglas van DESPUÉS de style.css, así que ganan sobre la
+   barra fija que aquel muestra a partir de 861px.
    -------------------------------------------------------------------------- */
-@media (max-width: 860px){
-  /* El padding-top DEBE dejar pasar la barra superior fija (que acá mide 64px).
-     Ponerlo en 20px metía el contenido debajo de la barra y tapaba el botón
-     del menú: parecía que el menú no existía. */
-  .main{ padding:84px 16px 40px; }
-  .mobile-topbar{ height:64px; padding:0 12px; }
-  .mobile-menu-btn{
-    display:flex !important;          /* que nunca quede oculto por otra regla */
-    min-width:52px; min-height:52px; font-size:28px;
-    border:1px solid rgba(255,255,255,.25);
+@media (max-width: 1100px){
+  /* Barra superior siempre visible con el botón del menú */
+  .mobile-topbar{
+    display:flex !important; align-items:center; gap:14px;
+    position:fixed; top:0; left:0; right:0; height:64px; z-index:70;
+    background:var(--ink); color:#fff; padding:0 12px;
   }
-  .mobile-topbar-brand{ font-size:15px; }
-  .sidebar{ width:290px; padding:24px 16px; }
+  .mobile-menu-btn{
+    display:flex !important; align-items:center; justify-content:center;
+    min-width:52px; min-height:52px; font-size:28px; color:#fff;
+    background:transparent; border:1px solid rgba(255,255,255,.25); border-radius:10px;
+  }
+  .mobile-menu-btn:active{ background:rgba(255,255,255,.14); }
+  .mobile-topbar-brand{ font-weight:700; letter-spacing:.14em; font-size:15px; }
+
+  /* Barra lateral → cajón que entra desde la izquierda */
+  .sidebar{
+    top:0; bottom:0; left:0; width:300px; max-width:86vw; padding:24px 18px;
+    z-index:80; transform:translateX(-100%);
+    transition:transform .28s var(--ease); overflow-y:auto;
+  }
+  body.nav-open .sidebar{ transform:translateX(0); box-shadow:0 0 50px rgba(0,0,0,.5); }
+
+  /* Fondo oscuro detrás del cajón */
+  .sidebar-overlay{
+    display:block !important; position:fixed; inset:0; z-index:75;
+    background:rgba(0,0,0,.5); opacity:0; pointer-events:none;
+    transition:opacity .25s var(--ease);
+  }
+  body.nav-open .sidebar-overlay{ opacity:1; pointer-events:auto; }
+
+  /* Contenido a todo el ancho, debajo de la barra fija (que mide 64px).
+     El padding-top DEBE superarla: con 20px el contenido se metía debajo y
+     tapaba el botón del menú, y parecía que no existía. */
+  .main{ margin-left:0 !important; padding:84px 16px 40px; }
+
   .grid-2{ grid-template-columns:1fr; gap:var(--gap); }
   .kpi-grid{ grid-template-columns:repeat(2,1fr); gap:var(--gap); }
   .kpi-value{ font-size:26px; }
