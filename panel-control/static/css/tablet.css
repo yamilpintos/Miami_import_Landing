@@ -95,9 +95,17 @@
       (el drawer ya existe en style.css; acá solo se agranda para el dedo)
    -------------------------------------------------------------------------- */
 @media (max-width: 860px){
-  .main{ padding:20px 16px 40px; }
-  .mobile-topbar{ height:60px; }
-  .mobile-menu-btn{ min-width:52px; min-height:52px; font-size:26px; }
+  /* El padding-top DEBE dejar pasar la barra superior fija (que acá mide 64px).
+     Ponerlo en 20px metía el contenido debajo de la barra y tapaba el botón
+     del menú: parecía que el menú no existía. */
+  .main{ padding:84px 16px 40px; }
+  .mobile-topbar{ height:64px; padding:0 12px; }
+  .mobile-menu-btn{
+    display:flex !important;          /* que nunca quede oculto por otra regla */
+    min-width:52px; min-height:52px; font-size:28px;
+    border:1px solid rgba(255,255,255,.25);
+  }
+  .mobile-topbar-brand{ font-size:15px; }
   .sidebar{ width:290px; padding:24px 16px; }
   .grid-2{ grid-template-columns:1fr; gap:var(--gap); }
   .kpi-grid{ grid-template-columns:repeat(2,1fr); gap:var(--gap); }

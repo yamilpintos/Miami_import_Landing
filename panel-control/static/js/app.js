@@ -31,10 +31,24 @@ function fmtNum(n) {
   return Number(n).toLocaleString('es-AR');
 }
 
-// Alias corto de escapeHtml. REGLA: todo valor que venga de la API y se
-// inserte con innerHTML va con esc(). Los pedidos los crea cualquiera desde el
-// checkout publico (nombre, email), asi que sin esto un `<img onerror=...>` en
-// el nombre del comprador ejecuta JS con la sesion del admin.
+// REGLA: todo valor que venga de la API y se inserte con innerHTML va con
+// esc(). Los pedidos los crea cualquiera desde el checkout público (nombre,
+// email), así que sin esto un `<img onerror=...>` en el nombre del comprador
+// ejecuta JS con la sesión del admin.
+//
+// Se define ACÁ arriba a propósito: es de las primeras cosas que corren y la
+// usa todo el panel. Estaba más abajo, junto a una sección que se eliminó, y
+// se fue con ella: `const esc = escapeHtml` lanzaba ReferenceError y mataba el
+// script entero (no andaba ni el menú ni las pestañas).
+function escapeHtml(s) {
+  // String(s ?? '') — NO `s || ''`: con un número, array o booleano el `||` los
+  // dejaba pasar tal cual y `.replace` no existe -> TypeError que abortaba el
+  // render entero. Y con `||` el 0 se convertía en '' (stock 0 salía vacío).
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 const esc = escapeHtml;
 
 let MFA_ABIERTO = false;
@@ -94,14 +108,36 @@ function activateTab(tab) {
   if (!VALID_TABS.includes(tab)) tab = 'dashboard';
   $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $$('.tab').forEach(s => s.classList.toggle('active', s.dataset.tab === tab));
-  const loader = TAB_LOADERS[tab];
-  if (loader) loader();
-  closeSidebar();            // en celu: cerrar el menú al navegar
+  closeSidebar();            // en tablet: cerrar el cajón al navegar
   window.scrollTo(0, 0);
+  // La carga de datos va al final y protegida: si un endpoint falla, la
+  // pestaña igual queda abierta en vez de dejar la navegación a medias.
+  try {
+    const loader = TAB_LOADERS[tab];
+    if (loader) loader();
+  } catch (e) {
+    toast('No se pudo cargar esta sección: ' + e.message, 'error');
+  }
 }
 
-// Navegación por cambio de hash (clicks en los <a>, back/forward, entrada directa)
+// Navegación por cambio de hash (back/forward del navegador, entrada directa)
 window.addEventListener('hashchange', () => activateTab(currentTabFromHash()));
+
+// Y ADEMÁS por click directo en cada ítem del menú. No alcanza con depender del
+// hashchange: si el hash ya es el mismo el evento no dispara, y algunos
+// navegadores de tablet lo entregan tarde o no lo entregan. Con esto, tocar una
+// pestaña siempre navega.
+document.addEventListener('click', ev => {
+  const item = ev.target.closest('.nav-item[href^="#"]');
+  if (!item) return;
+  ev.preventDefault();
+  const tab = item.getAttribute('href').slice(1);
+  if (location.hash !== '#' + tab) {
+    history.pushState(null, '', '#' + tab);   // deja andando atrás/adelante
+  }
+  activateTab(tab);
+});
+window.addEventListener('popstate', () => activateTab(currentTabFromHash()));
 
 // ============ Menú lateral en celular (drawer) ============
 function openSidebar() { document.body.classList.add('nav-open'); }
@@ -479,7 +515,7 @@ function clearAltaPreviews() {
   $('#alta-previews').innerHTML = '';
 }
 
-$('#form-nuevo').images.addEventListener('change', e => {
+$('#form-nuevo').elements.images.addEventListener('change', e => {
   // Sumar lo elegido a lo que ya había (acumular, no reemplazar)
   Array.from(e.target.files || []).forEach(f => ALTA_FILES.push({ file: f, rotation: 0 }));
   e.target.value = '';   // limpiar el input para poder re-elegir y no duplicar
