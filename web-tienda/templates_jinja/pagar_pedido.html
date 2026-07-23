@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Pagar pedido #{{ order.number }} — {{ STORE_NAME }}{% endblock %}
+{% block head_extra %}{% if stripe_enabled %}<script src="https://js.stripe.com/v3/"></script>{% endif %}{% endblock %}
+
+{% block content %}
+{% set pagado = order.payment_status == 'paid' %}
+<div class="mi-container" style="max-width:520px;padding:48px 20px 80px;min-height:60vh">
+
+  {% if pagado %}
+    <div style="text-align:center">
+      <div style="width:72px;height:72px;margin:0 auto 22px;border-radius:50%;
+                  background:rgba(46,160,90,.12);border:1px solid rgba(46,160,90,.45);
+                  display:flex;align-items:center;justify-content:center">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#4ade80"
+             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+      </div>
+      <h1 style="font-size:26px;margin:0 0 10px">¡Pago recibido!</h1>
+      <p style="color:rgba(245,243,238,.65);font-size:15px">
+        Gracias por tu compra. Ya podés retirar tu pedido.
+      </p>
+    </div>
+  {% else %}
+    <h1 style="font-size:24px;margin:0 0 6px;text-align:center">Pagar tu compra</h1>
+    <p style="text-align:center;color:rgba(245,243,238,.5);font-size:13px;
+              letter-spacing:.12em;text-transform:uppercase;margin:0 0 26px">
+      Pedido #{{ order.number }}
+    </p>
+  {% endif %}
+
+  {# Detalle #}
+  <div style="background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:14px;
+              padding:22px;margin-bottom:24px;color:#f5f3ee">
+    {% for it in order.items %}
+    <div style="display:flex;justify-content:space-between;gap:14px;padding:10px 0;
+                border-bottom:1px solid rgba(255,255,255,.06)">
+      <span style="font-size:14px">{{ it.product_name }}{% if it.variant_value %}
+        <span style="color:rgba(245,243,238,.5)"> · {{ it.variant_value }}</span>{% endif %}
+        <span style="color:rgba(245,243,238,.5)"> ×{{ it.quantity }}</span></span>
+      <span style="font-weight:600;font-size:14px;white-space:nowrap">{{ it.subtotal | money(order.currency) }}</span>
+    </div>
+    {% endfor %}
+    <div style="display:flex;justify-content:space-between;margin-top:16px;font-size:20px;font-weight:700">
+      <span>Total</span><span style="color:var(--miami-gold,#b99b63)">{{ order.total | money(order.currency) }}</span>
+    </div>
+  </div>
+
+  {% if not pagado %}
+    {% if stripe_enabled %}
+      <div id="mi-pago"></div>
+      <button type="button" id="btn-pagar" style="margin-top:20px;width:100%;padding:17px;
+        border:0;border-radius:999px;background:var(--miami-gold,#b99b63);color:#0a0a0a;
+        font-weight:700;letter-spacing:.15em;text-transform:uppercase;font-size:14px;cursor:pointer">
+        Pagar {{ order.total | money(order.currency) }}
+      </button>
+      <p id="mi-msg" style="margin-top:14px;font-size:14px;color:#ff8a8a;text-align:center;min-height:20px"></p>
+      <p style="margin-top:10px;font-size:12px;color:rgba(245,243,238,.4);text-align:center">
+        Pago protegido por Stripe. No guardamos los datos de tu tarjeta.
+      </p>
+    {% else %}
+      <p style="padding:16px;border:1px solid rgba(220,143,56,.4);border-radius:10px;
+                color:#dca06a;font-size:14px;text-align:center">
+        El pago con tarjeta no está disponible en este momento.
+      </p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if not pagado and stripe_enabled %}
+<script nonce="{{ csp_nonce }}">
+  const msg = document.getElementById('mi-msg');
+  const btn = document.getElementById('btn-pagar');
+  let stripe, elements;
+
+  // Se prepara el pago al abrir: el cliente ya escaneó el QR, cuantos menos
+  // toques haga, mejor.
+  (async () => {
+    try {
+      const r = await fetch('/api/checkout/pagar-pedido', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ numero: {{ order.number }}, token: {{ token | tojson }} }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'No se pudo iniciar el pago');
+      if (d.ya_pagado) { location.reload(); return; }
+
+      const pk = (d.publishable_key || '').trim();
+      if (!/^pk_(test|live)_[A-Za-z0-9]+$/.test(pk)) {
+        throw new Error('El medio de pago no está bien configurado.');
+      }
+      stripe = Stripe(pk);
+      elements = stripe.elements({ clientSecret: d.client_secret });
+      elements.create('payment').mount('#mi-pago');
+    } catch (e) {
+      msg.textContent = e.message;
+      btn.disabled = true;
+    }
+  })();
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true; btn.textContent = 'Procesando…'; msg.textContent = '';
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: { return_url: location.origin + location.pathname + location.search },
+    });
+    if (error) {
+      msg.textContent = error.message;
+      btn.disabled = false;
+      btn.textContent = 'Reintentar pago';
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

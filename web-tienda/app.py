@@ -292,6 +292,34 @@ def checkout_page(request: Request, db: Session = Depends(get_db),
     )
 
 
+@app.get("/pagar/{number}", response_class=HTMLResponse)
+def pay_order_page(number: int, request: Request, t: str = "",
+                   payment_intent: str = "", db: Session = Depends(get_db)):
+    """Página de pago de un pedido puntual — la que abre el QR del mostrador.
+
+    Se autoriza con el token opaco de la orden, igual que la confirmación:
+    el número solo no alcanza. Siempre 404 (nunca 403) para no revelar qué
+    números existen.
+    """
+    order = db.query(Order).filter(Order.number == number).one_or_none()
+    if not order or not order.public_token or not t:
+        raise HTTPException(404, "Pedido no encontrado")
+    if not secrets.compare_digest(t, order.public_token):
+        raise HTTPException(404, "Pedido no encontrado")
+
+    # Al volver de Stripe se acredita en el momento, sin esperar al webhook.
+    if order.payment_status != "paid" and payment_intent:
+        if confirmar_pago_desde_stripe(db, order, payment_intent):
+            db.refresh(order)
+
+    return templates.TemplateResponse(
+        request, "pagar_pedido.html",
+        base_context(request, db, order=order, token=t,
+                     stripe_enabled=bool(settings.STRIPE_PUBLISHABLE_KEY),
+                     template_class="pay"),
+    )
+
+
 @app.get("/pedido/{number}", response_class=HTMLResponse)
 def order_confirmation(number: int, request: Request, t: str = "",
                        payment_intent: str = "",

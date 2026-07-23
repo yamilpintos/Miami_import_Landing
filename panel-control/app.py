@@ -29,6 +29,7 @@ from fastapi.staticfiles import StaticFiles
 
 from auth import auth_router, ensure_admin, get_current_admin, is_admin_request
 from catalogo_entrante import router as entrante_router
+from pos import router as pos_router
 from core.config import settings
 from core.db import init_db
 from core.web_security import install_security
@@ -82,6 +83,7 @@ def _startup() -> None:
 app.include_router(auth_router)
 app.include_router(panel_router)
 app.include_router(entrante_router)
+app.include_router(pos_router)
 
 
 def _html_sin_cache(path: Path) -> HTMLResponse:

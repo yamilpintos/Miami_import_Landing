@@ -28,6 +28,7 @@ endpoints responden 503 sin romper la tienda.
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -355,6 +356,92 @@ def _create_intent_once(body: dict, request: Request, db: Session,
     }
 
 
+@checkout_router.post("/api/checkout/pagar-pedido")
+def pagar_pedido(body: dict, db: Session = Depends(get_db)):
+    """Genera el pago de una orden YA creada (ventas de mostrador vía QR).
+
+    A diferencia de create-intent, acá no hay carrito: la orden ya existe con
+    su detalle y su stock reservado. El acceso se autoriza con el token opaco
+    de la orden, igual que la página de confirmación.
+
+    El monto se toma de la ORDEN, nunca del request.
+    """
+    if not _stripe_ready():
+        raise HTTPException(503, "Stripe no está configurado todavía")
+
+    try:
+        numero = int(body.get("numero"))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Pedido inválido")
+    token = str(body.get("token") or "")
+
+    order = db.query(Order).filter(Order.number == numero).one_or_none()
+    if not order or not order.public_token or not token:
+        raise HTTPException(404, "Pedido no encontrado")
+    if not secrets.compare_digest(token, order.public_token):
+        raise HTTPException(404, "Pedido no encontrado")
+    if order.payment_status == "paid":
+        return {"ya_pagado": True, "order_number": order.number}
+    if order.status == "cancelled":
+        raise HTTPException(409, "Este pedido fue cancelado")
+    if not order.total or order.total <= 0:
+        raise HTTPException(400, "El total del pedido es inválido")
+
+    moneda = (order.currency or settings.CHECKOUT_CURRENCY).lower()
+    minor = settings.minor_units(moneda)
+
+    # Si ya hay un intent vivo para esta orden, se reusa: crear uno nuevo en
+    # cada escaneo del QR dejaría pagos huérfanos en Stripe.
+    pago = (db.query(Payment)
+            .filter(Payment.order_id == order.id,
+                    Payment.stripe_payment_intent_id.isnot(None))
+            .order_by(Payment.id.desc()).first())
+    if pago:
+        try:
+            intent = stripe.PaymentIntent.retrieve(pago.stripe_payment_intent_id)
+            estado = intent.get("status")
+            # Ya cobrado: NO generar otro intent (sería un segundo cobro por la
+            # misma compra). Se acredita la orden y se avisa que está pagada.
+            if estado in ("succeeded", "processing"):
+                confirmar_pago_desde_stripe(db, order, pago.stripe_payment_intent_id)
+                return {"ya_pagado": True, "order_number": order.number}
+            if estado in ("requires_payment_method", "requires_confirmation",
+                          "requires_action"):
+                return {
+                    "client_secret": intent.client_secret,
+                    "publishable_key": settings.STRIPE_PUBLISHABLE_KEY,
+                    "order_number": order.number,
+                    "amount": f"{order.total:.2f}",
+                }
+        except stripe.StripeError:
+            pass
+
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=int((order.total * minor).to_integral_value()),
+            currency=moneda,
+            receipt_email=order.email or None,
+            metadata={"order_id": order.id, "order_number": order.number,
+                      "canal": "local"},
+            automatic_payment_methods={"enabled": True},
+            idempotency_key=f"orden-{order.id}-{order.public_token[:16]}",
+        )
+    except stripe.StripeError as exc:
+        log.exception("Stripe rechazó el pago de la orden %s", order.id)
+        raise HTTPException(502, "No pudimos iniciar el pago. Probá de nuevo.") from exc
+
+    db.add(Payment(order_id=order.id, provider="stripe",
+                   stripe_payment_intent_id=intent.id, amount=order.total,
+                   currency=(order.currency or moneda.upper())[:3], status="pending"))
+    db.commit()
+    return {
+        "client_secret": intent.client_secret,
+        "publishable_key": settings.STRIPE_PUBLISHABLE_KEY,
+        "order_number": order.number,
+        "amount": f"{order.total:.2f}",
+    }
+
+
 def confirmar_pago_desde_stripe(db: Session, order: Order, pi_id: str) -> bool:
     """Acredita una orden consultando el PaymentIntent DIRECTO a Stripe.
 
@@ -379,7 +466,8 @@ def confirmar_pago_desde_stripe(db: Session, order: Order, pi_id: str) -> bool:
     payment = (db.query(Payment)
                .filter(Payment.order_id == order.id,
                        Payment.stripe_payment_intent_id == pi_id)
-               .one_or_none())
+               .order_by(Payment.id.desc())
+               .first())
     if not payment:
         log.warning("Intent %s no pertenece a la orden %s", pi_id, order.id)
         return False

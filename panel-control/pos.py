@@ -1,0 +1,234 @@
+"""
+Punto de venta (mostrador) — armar una venta desde la tablet y cobrarla.
+
+Flujo:
+  1. El vendedor arma el carrito en la tablet y pone el nombre del cliente.
+  2. POST /api/pos/venta crea la orden, RESERVA el stock y devuelve un QR.
+  3. El cliente escanea el QR con su celular y paga en la página de la tienda.
+     El cobro entra por la MISMA cuenta de Stripe que las ventas online.
+  4. La tablet consulta el estado hasta que el pago se acredita.
+
+La venta queda como una orden más: aparece en Pedidos junto a las online, con
+`canal="local"` para poder distinguirlas.
+
+Decisiones (mismo criterio que el checkout público):
+  - El precio SIEMPRE se toma de la base, nunca del request.
+  - El stock se reserva al crear la venta, con lock de fila.
+  - El pago lo confirma Stripe; el panel no puede marcar pagado a mano.
+"""
+from __future__ import annotations
+
+import io
+import logging
+from decimal import Decimal
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from auth import get_current_admin
+from core.config import settings
+from core.db import get_db
+from core.models import AuditLog, Order, OrderItem, Product, Variant
+
+log = logging.getLogger("pos")
+
+router = APIRouter(prefix="/api/pos", tags=["punto-de-venta"],
+                   dependencies=[Depends(get_current_admin)])
+
+MAX_ITEMS = 60
+MAX_QTY = 99
+
+
+def _next_order_number(db: Session) -> int:
+    last = db.query(Order).order_by(Order.number.desc()).first()
+    return (last.number + 1) if last and last.number else 1000
+
+
+def _qr_svg(url: str) -> str:
+    """QR del link de pago, generado en el servidor (sin depender de un CDN)."""
+    try:
+        import qrcode
+        import qrcode.image.svg as svg
+        buf = io.BytesIO()
+        qrcode.make(url, image_factory=svg.SvgPathImage).save(buf)
+        return buf.getvalue().decode("utf-8")
+    except Exception:  # noqa: BLE001  (sin QR queda el link igual)
+        log.exception("No se pudo generar el QR")
+        return ""
+
+
+@router.get("/buscar")
+def buscar_productos(q: str = "", db: Session = Depends(get_db)):
+    """Busca productos para agregar a la venta. Devuelve solo lo vendible."""
+    query = (db.query(Product)
+             .filter(Product.published.is_(True))
+             .order_by(Product.name))
+    termino = (q or "").strip().lower()
+    if termino:
+        like = f"%{termino}%"
+        from sqlalchemy import func
+        query = query.filter(func.lower(Product.name).like(like)
+                             | func.lower(Product.brand).like(like)
+                             | func.lower(func.coalesce(Product.handle, "")).like(like))
+
+    salida = []
+    for p in query.limit(60).all():
+        variantes = [{
+            "variant_id": v.id,
+            "talle": v.value or "Único",
+            "sku": v.sku,
+            "precio": f"{v.price:.2f}" if v.price else None,
+            "stock": v.stock or 0,
+        } for v in p.variants if v.visible and (v.stock or 0) > 0 and v.price and v.price > 0]
+        if not variantes:
+            continue          # sin stock o sin precio: no se puede vender
+        salida.append({
+            "product_id": p.id,
+            "nombre": p.name,
+            "marca": p.brand or "",
+            "imagen": p.images[0].url if p.images else None,
+            "variantes": variantes,
+        })
+    return {"productos": salida}
+
+
+@router.post("/venta")
+def crear_venta(body: dict, db: Session = Depends(get_db),
+                admin=Depends(get_current_admin)):
+    """Crea la venta de mostrador y devuelve el QR para que el cliente pague."""
+    items = body.get("items") or []
+    if not items:
+        raise HTTPException(400, "La venta está vacía")
+    if len(items) > MAX_ITEMS:
+        raise HTTPException(400, f"Máximo {MAX_ITEMS} ítems por venta")
+
+    cliente = str(body.get("cliente") or "").strip()[:120]
+    if not cliente:
+        raise HTTPException(400, "Falta el nombre del cliente")
+    telefono = str(body.get("telefono") or "").strip()[:40]
+    email = str(body.get("email") or "").strip().lower()[:255]
+    nota = str(body.get("nota") or "").strip()[:500]
+
+    # --- Validar y reservar stock, con el precio de la base --------------------
+    pedido: dict[int, int] = {}
+    for it in items:
+        try:
+            vid = int(it.get("variant_id"))
+            qty = int(it.get("cantidad", 1))
+        except (TypeError, ValueError):
+            raise HTTPException(400, "Ítem inválido")
+        if qty < 1 or qty > MAX_QTY:
+            raise HTTPException(400, f"Cantidad inválida (1 a {MAX_QTY})")
+        pedido[vid] = pedido.get(vid, 0) + qty   # mismo talle dos veces = suma
+
+    subtotal = Decimal("0")
+    snapshot = []
+    monedas: set[str] = set()
+    for vid in sorted(pedido):                    # orden fijo: evita deadlocks
+        qty = pedido[vid]
+        v = db.get(Variant, vid, with_for_update=True)
+        if not v or not v.visible:
+            db.rollback()
+            raise HTTPException(404, "Un producto de la venta ya no está disponible")
+        nombre = v.product.name if v.product else "un producto"
+        if not v.product or not v.product.published:
+            db.rollback()
+            raise HTTPException(409, f"{nombre} ya no está publicado")
+        if qty > (v.stock or 0):
+            db.rollback()
+            raise HTTPException(409, f"Sin stock suficiente de {nombre} "
+                                     f"(quedan {v.stock or 0})")
+        if not v.price or v.price <= 0:
+            db.rollback()
+            raise HTTPException(409, f"{nombre} no tiene precio válido")
+        monedas.add((v.currency or settings.CHECKOUT_CURRENCY).strip().lower())
+        linea = v.price * qty
+        subtotal += linea
+        snapshot.append((v, qty, v.price, linea))
+
+    if len(monedas) > 1:
+        db.rollback()
+        raise HTTPException(409, "La venta mezcla productos en distintas monedas")
+    moneda = monedas.pop() if monedas else settings.CHECKOUT_CURRENCY
+
+    # --- Crear la orden -------------------------------------------------------
+    orden = Order(
+        number=_next_order_number(db), email=email or None,
+        contact_name=cliente, contact_phone=telefono or None,
+        status="pending", payment_status="pending",
+        currency=moneda.upper()[:3],
+        subtotal=subtotal, shipping_cost=Decimal("0"), discount=Decimal("0"),
+        total=subtotal, stock_reserved=True,
+        notes=(f"Venta en local. {nota}".strip() if nota else "Venta en local"),
+        shipping_address={"canal": "local", "vendedor": admin.email},
+    )
+    for v, qty, precio, linea in snapshot:
+        v.stock = (v.stock or 0) - qty            # reserva
+        orden.items.append(OrderItem(
+            variant_id=v.id, product_id=v.product_id,
+            product_name=v.product.name if v.product else "",
+            variant_value=v.value, sku=v.sku,
+            unit_price=precio, quantity=qty, subtotal=linea))
+    db.add(orden)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(503, "No se pudo generar la venta. Probá de nuevo.")
+    db.refresh(orden)
+
+    db.add(AuditLog(user_id=admin.id, action="pos_venta_creada",
+                    entity="order", entity_id=str(orden.id)))
+    db.commit()
+
+    base = settings.STORE_BASE_URL.rstrip("/")
+    url_pago = f"{base}/pagar/{orden.number}?t={orden.public_token}"
+    return {
+        "ok": True,
+        "order_id": orden.id,
+        "numero": orden.number,
+        "total": f"{subtotal:.2f}",
+        "moneda": moneda,
+        "url_pago": url_pago,
+        "qr_svg": _qr_svg(url_pago),
+    }
+
+
+@router.get("/venta/{oid}/estado")
+def estado_venta(oid: int, db: Session = Depends(get_db)):
+    """Estado del cobro, para que la tablet sepa cuándo se acreditó."""
+    o = db.get(Order, oid)
+    if not o:
+        raise HTTPException(404, "Venta no encontrada")
+    return {
+        "numero": o.number,
+        "pagado": o.payment_status == "paid",
+        "estado_pago": o.payment_status,
+        "estado": o.status,
+        "total": f"{o.total:.2f}",
+    }
+
+
+@router.post("/venta/{oid}/cancelar")
+def cancelar_venta(oid: int, db: Session = Depends(get_db),
+                   admin=Depends(get_current_admin)):
+    """Cancela una venta sin pagar y devuelve el stock reservado."""
+    o = db.get(Order, oid)
+    if not o:
+        raise HTTPException(404, "Venta no encontrada")
+    if o.payment_status == "paid":
+        raise HTTPException(409, "La venta ya está pagada: usá el reembolso")
+
+    if o.stock_reserved:
+        for it in o.items:
+            v = db.get(Variant, it.variant_id, with_for_update=True) if it.variant_id else None
+            if v:
+                v.stock = (v.stock or 0) + it.quantity
+        o.stock_reserved = False
+    o.status = "cancelled"
+    o.payment_status = "cancelled"
+    db.add(AuditLog(user_id=admin.id, action="pos_venta_cancelada",
+                    entity="order", entity_id=str(o.id)))
+    db.commit()
+    return {"ok": True}

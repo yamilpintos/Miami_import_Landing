@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="/static/css/style.css?v=20260722a">
+<!-- Capa táctil para la tablet del local. Va DESPUÉS: solo ajusta. -->
+<link rel="stylesheet" href="/static/css/tablet.css">
 </head>
 <body>
 
@@ -83,6 +85,10 @@
     <a class="nav-item" href="#catalogo-entrante" data-tab="catalogo-entrante">
       <span class="nav-icon">⇲</span>
       <span>Catálogo entrante</span>
+    </a>
+    <a class="nav-item" href="#venta" data-tab="venta">
+      <span class="nav-icon">🛒</span>
+      <span>Vender</span>
     </a>
     <a class="nav-item" href="#pedidos" data-tab="pedidos">
       <span class="nav-icon">▢</span>
@@ -275,6 +281,75 @@
   </section>
 
   <!-- ========= PEDIDOS ========= -->
+  <!-- ========= VENDER (mostrador) ========= -->
+  <section class="tab" data-tab="venta">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Punto de venta</div>
+        <h1>Vender en el local</h1>
+      </div>
+    </header>
+
+    <div class="pos-layout">
+      <!-- Buscador + productos -->
+      <div class="pos-catalogo">
+        <input id="pos-buscar" class="search pos-search" type="search"
+               placeholder="Buscar producto o marca…" autocomplete="off"/>
+        <div id="pos-resultados" class="pos-grid">
+          <div class="loading">Escribí para buscar, o esperá a que cargue el catálogo…</div>
+        </div>
+      </div>
+
+      <!-- Carrito -->
+      <aside class="pos-carrito">
+        <h2 class="pos-carrito__titulo">Venta actual</h2>
+
+        <div id="pos-items" class="pos-items">
+          <p class="pos-vacio">Tocá un producto para agregarlo.</p>
+        </div>
+
+        <div class="pos-total">
+          <span>Total</span>
+          <strong id="pos-total">$ 0</strong>
+        </div>
+
+        <label class="pos-label">Cliente
+          <input id="pos-cliente" type="text" placeholder="Nombre y apellido" autocomplete="off"/>
+        </label>
+        <label class="pos-label">Teléfono <span class="pos-opt">(opcional)</span>
+          <input id="pos-telefono" type="tel" placeholder="11 2233 4455" autocomplete="off"/>
+        </label>
+
+        <button type="button" id="pos-cobrar" class="btn-primary pos-cobrar" disabled>
+          Cobrar
+        </button>
+        <button type="button" id="pos-vaciar" class="btn-ghost pos-vaciar">Vaciar</button>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Pantalla de cobro con QR -->
+  <div id="pos-modal-cobro" class="pos-cobro" hidden>
+    <div class="pos-cobro__caja">
+      <button type="button" id="pos-cerrar-cobro" class="pos-cobro__cerrar" aria-label="Cerrar">✕</button>
+      <div id="pos-cobro-espera">
+        <h2 class="pos-cobro__titulo">Que el cliente escanee el código</h2>
+        <p class="pos-cobro__sub">Paga con su celular. La pantalla se actualiza sola.</p>
+        <div id="pos-qr" class="pos-qr"></div>
+        <div class="pos-cobro__monto"><span>Total a cobrar</span><strong id="pos-cobro-total">—</strong></div>
+        <p class="pos-cobro__link">¿No puede escanear? <a id="pos-link" href="#" target="_blank">Abrir el link de pago</a></p>
+        <div class="pos-cobro__estado"><span class="pos-punto"></span> Esperando el pago…</div>
+        <button type="button" id="pos-cancelar-venta" class="btn-ghost pos-cobro__cancelar">Cancelar venta</button>
+      </div>
+      <div id="pos-cobro-ok" hidden class="pos-cobro__ok">
+        <div class="pos-cobro__tilde">✓</div>
+        <h2 class="pos-cobro__titulo">¡Pago recibido!</h2>
+        <p class="pos-cobro__sub">La venta quedó registrada en Pedidos.</p>
+        <button type="button" id="pos-nueva-venta" class="btn-primary pos-cobrar">Nueva venta</button>
+      </div>
+    </div>
+  </div>
+
   <section class="tab" data-tab="pedidos">
     <header class="page-header">
       <div>

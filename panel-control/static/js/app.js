@@ -72,13 +72,14 @@ async function api(path, opts = {}) {
 // Cada pestaña tiene su propia URL (#dashboard, #catalogo-entrante, etc.) para
 // poder entrar directo, compartir el link y usar atrás/adelante del navegador.
 const VALID_TABS = [
-  'dashboard', 'productos', 'alta', 'catalogo-entrante', 'pedidos',
+  'dashboard', 'productos', 'alta', 'catalogo-entrante', 'venta', 'pedidos',
   'estadisticas', 'precios-usd', 'whatsapp', 'acciones',
 ];
 const TAB_LOADERS = {
   dashboard: loadDashboard,
   productos: () => { if (PRODUCTS_CACHE.length === 0) loadProducts(); },
   'catalogo-entrante': loadCatalogoEntrante,
+  venta: () => posBuscar($('#pos-buscar')?.value || ''),
   pedidos: loadOrders,
   estadisticas: loadStatsDetail,
   'precios-usd': loadUsdPrices,
@@ -1200,4 +1201,211 @@ document.addEventListener('click', ev => {
       `[data-order-detail="${CSS.escape(fila.dataset.orderToggle)}"]`);
     if (det) det.hidden = !det.hidden;
   }
+});
+
+// ============ Vender en el local (punto de venta) ============
+// Arma una venta desde la tablet y la cobra con un QR: el cliente escanea y
+// paga con su celular. El cobro entra por la misma cuenta de Stripe que la
+// tienda online, y la venta queda como un pedido más.
+let POS_CARRITO = [];        // [{variant_id, nombre, talle, precio, stock, cantidad}]
+let POS_CATALOGO = [];
+let POS_VENTA = null;        // venta en curso mientras se espera el pago
+let POS_POLL = null;
+
+function posMoney(n) {
+  return '$ ' + Math.round(n).toLocaleString('es-AR');
+}
+
+async function posBuscar(q) {
+  const cont = $('#pos-resultados');
+  try {
+    const r = await api('/api/pos/buscar?q=' + encodeURIComponent(q || ''));
+    POS_CATALOGO = r.productos || [];
+    posRenderCatalogo();
+  } catch (e) {
+    cont.innerHTML = '<div class="loading">Error: ' + esc(e.message) + '</div>';
+  }
+}
+
+function posRenderCatalogo() {
+  const cont = $('#pos-resultados');
+  if (!POS_CATALOGO.length) {
+    cont.innerHTML = '<div class="loading">No hay productos con stock para vender.</div>';
+    return;
+  }
+  cont.innerHTML = POS_CATALOGO.map(p => `
+    <div class="pos-card">
+      <div class="pos-card__img">
+        ${p.imagen ? `<img src="${esc(p.imagen)}" alt="" loading="lazy">` : '<span>Sin foto</span>'}
+      </div>
+      <div class="pos-card__info">
+        <div class="pos-card__marca">${esc(p.marca)}</div>
+        <div class="pos-card__nombre">${esc(p.nombre)}</div>
+        <div class="pos-card__talles">
+          ${p.variantes.map(v => `
+            <button type="button" class="pos-talle" data-add="${Number(v.variant_id)}"
+                    title="${esc(v.talle)} - ${v.stock} en stock">
+              <span>${esc(v.talle)}</span>
+              <small>${posMoney(parseFloat(v.precio))}</small>
+            </button>`).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function posAgregar(vid) {
+  let datos = null;
+  for (const p of POS_CATALOGO) {
+    const v = (p.variantes || []).find(x => x.variant_id === vid);
+    if (v) { datos = { p, v }; break; }
+  }
+  if (!datos) return;
+  const existente = POS_CARRITO.find(i => i.variant_id === vid);
+  const enCarrito = existente ? existente.cantidad : 0;
+  if (enCarrito + 1 > datos.v.stock) {
+    return toast(`Solo quedan ${datos.v.stock} de ${datos.p.nombre} (${datos.v.talle})`, 'error');
+  }
+  if (existente) existente.cantidad++;
+  else POS_CARRITO.push({
+    variant_id: vid, nombre: datos.p.nombre, talle: datos.v.talle,
+    precio: parseFloat(datos.v.precio), stock: datos.v.stock, cantidad: 1,
+  });
+  posRenderCarrito();
+}
+
+function posCambiar(vid, delta) {
+  const it = POS_CARRITO.find(i => i.variant_id === vid);
+  if (!it) return;
+  const nueva = it.cantidad + delta;
+  if (nueva < 1) { POS_CARRITO = POS_CARRITO.filter(i => i.variant_id !== vid); }
+  else if (nueva > it.stock) { return toast(`Solo quedan ${it.stock}`, 'error'); }
+  else { it.cantidad = nueva; }
+  posRenderCarrito();
+}
+
+function posRenderCarrito() {
+  const cont = $('#pos-items');
+  const total = POS_CARRITO.reduce((a, i) => a + i.precio * i.cantidad, 0);
+  $('#pos-total').textContent = posMoney(total);
+  $('#pos-cobrar').disabled = POS_CARRITO.length === 0;
+
+  if (!POS_CARRITO.length) {
+    cont.innerHTML = '<p class="pos-vacio">Tocá un producto para agregarlo.</p>';
+    return;
+  }
+  cont.innerHTML = POS_CARRITO.map(i => `
+    <div class="pos-item">
+      <div class="pos-item__txt">
+        <div class="pos-item__nombre">${esc(i.nombre)}</div>
+        <div class="pos-item__talle">Talle ${esc(i.talle)} · ${posMoney(i.precio)}</div>
+      </div>
+      <div class="pos-item__qty">
+        <button type="button" data-qty="${Number(i.variant_id)}" data-delta="-1">−</button>
+        <span>${i.cantidad}</span>
+        <button type="button" data-qty="${Number(i.variant_id)}" data-delta="1">+</button>
+      </div>
+      <div class="pos-item__sub">${posMoney(i.precio * i.cantidad)}</div>
+    </div>
+  `).join('');
+}
+
+function posVaciar() {
+  POS_CARRITO = [];
+  $('#pos-cliente').value = '';
+  $('#pos-telefono').value = '';
+  posRenderCarrito();
+}
+
+async function posCobrar() {
+  const cliente = ($('#pos-cliente').value || '').trim();
+  if (!cliente) { $('#pos-cliente').focus(); return toast('Poné el nombre del cliente', 'error'); }
+  if (!POS_CARRITO.length) return;
+
+  const btn = $('#pos-cobrar');
+  btn.disabled = true; btn.textContent = 'Generando cobro…';
+  try {
+    const r = await api('/api/pos/venta', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cliente,
+        telefono: ($('#pos-telefono').value || '').trim(),
+        items: POS_CARRITO.map(i => ({ variant_id: i.variant_id, cantidad: i.cantidad })),
+      }),
+    });
+    POS_VENTA = r;
+    // El SVG del QR lo genera nuestro backend: es contenido propio.
+    $('#pos-qr').innerHTML = r.qr_svg || '';
+    $('#pos-cobro-total').textContent = posMoney(parseFloat(r.total));
+    $('#pos-link').href = r.url_pago;
+    $('#pos-cobro-espera').hidden = false;
+    $('#pos-cobro-ok').hidden = true;
+    const modal = $('#pos-modal-cobro');
+    modal.hidden = false; modal.style.display = 'flex';
+    posEsperarPago(r.order_id);
+  } catch (e) {
+    toast('No se pudo generar el cobro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = POS_CARRITO.length === 0;
+    btn.textContent = 'Cobrar';
+  }
+}
+
+function posEsperarPago(oid) {
+  clearInterval(POS_POLL);
+  POS_POLL = setInterval(async () => {
+    try {
+      const e = await api(`/api/pos/venta/${oid}/estado`);
+      if (e.pagado) {
+        clearInterval(POS_POLL);
+        $('#pos-cobro-espera').hidden = true;
+        $('#pos-cobro-ok').hidden = false;
+        toast('Pago recibido', 'success');
+        POS_CARRITO = [];
+        posRenderCarrito();
+        PRODUCTS_CACHE = [];      // el stock cambió
+      }
+    } catch (err) { /* reintenta en el próximo tick */ }
+  }, 3000);
+}
+
+function posCerrarCobro() {
+  clearInterval(POS_POLL);
+  const modal = $('#pos-modal-cobro');
+  modal.hidden = true; modal.style.display = 'none';
+  POS_VENTA = null;
+  posBuscar($('#pos-buscar').value);   // refrescar stock
+}
+
+async function posCancelarVenta() {
+  if (!POS_VENTA) return posCerrarCobro();
+  if (!confirm('¿Cancelar esta venta? Se devuelve el stock reservado.')) return;
+  try {
+    await api(`/api/pos/venta/${POS_VENTA.order_id}/cancelar`, { method: 'POST' });
+    toast('Venta cancelada', '');
+    posVaciar();
+  } catch (e) {
+    toast('No se pudo cancelar: ' + e.message, 'error');
+  }
+  posCerrarCobro();
+}
+
+// --- eventos ---
+let posDebounce;
+$('#pos-buscar')?.addEventListener('input', e => {
+  clearTimeout(posDebounce);
+  const q = e.target.value;
+  posDebounce = setTimeout(() => posBuscar(q), 250);
+});
+$('#pos-cobrar')?.addEventListener('click', posCobrar);
+$('#pos-vaciar')?.addEventListener('click', posVaciar);
+$('#pos-cerrar-cobro')?.addEventListener('click', posCerrarCobro);
+$('#pos-nueva-venta')?.addEventListener('click', posCerrarCobro);
+$('#pos-cancelar-venta')?.addEventListener('click', posCancelarVenta);
+
+document.addEventListener('click', ev => {
+  const add = ev.target.closest('[data-add]');
+  if (add) return posAgregar(Number(add.dataset.add));
+  const qty = ev.target.closest('[data-qty]');
+  if (qty) return posCambiar(Number(qty.dataset.qty), Number(qty.dataset.delta));
 });
