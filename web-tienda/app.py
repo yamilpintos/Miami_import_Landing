@@ -101,6 +101,19 @@ templates.env.filters["has_custom_image"] = lambda p: False
 templates.env.globals["store"] = {"products_url": "/productos"}
 
 
+def _con_relaciones(db: Session):
+    """Query de Product con variantes e imágenes cargadas de una.
+
+    Las tarjetas del catálogo leen product.images y product.min_price/
+    total_stock (que recorren las variantes). Sin esto era una consulta por
+    producto por relación: cientos de viajes a la Postgres remota por página.
+    """
+    from sqlalchemy.orm import selectinload
+    return (db.query(Product)
+            .options(selectinload(Product.variants),
+                     selectinload(Product.images)))
+
+
 def nav_categories(db: Session) -> list[Category]:
     """Categorías de primer nivel (marcas) con sus subcategorías, para el menú."""
     return (
@@ -173,7 +186,7 @@ def health():
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, db: Session = Depends(get_db)):
     destacados = (
-        db.query(Product)
+        _con_relaciones(db)
         .filter(Product.published.is_(True))
         .order_by(Product.id.desc())
         .limit(12)
@@ -191,11 +204,11 @@ def home(request: Request, db: Session = Depends(get_db)):
 @app.get("/productos/{handle}/", response_class=HTMLResponse)
 @app.get("/productos/{handle}", response_class=HTMLResponse)
 def product_detail(handle: str, request: Request, db: Session = Depends(get_db)):
-    prod = db.query(Product).filter(Product.handle == handle).one_or_none()
+    prod = _con_relaciones(db).filter(Product.handle == handle).one_or_none()
     if not prod or not prod.published:
         raise HTTPException(404, "Producto no encontrado")
     relacionados = (
-        db.query(Product)
+        _con_relaciones(db)
         .filter(Product.brand == prod.brand, Product.id != prod.id,
                 Product.published.is_(True))
         .limit(4)
@@ -211,7 +224,7 @@ def product_detail(handle: str, request: Request, db: Session = Depends(get_db))
 @app.get("/productos", response_class=HTMLResponse)
 def product_list(request: Request, db: Session = Depends(get_db)):
     productos = (
-        db.query(Product).filter(Product.published.is_(True))
+        _con_relaciones(db).filter(Product.published.is_(True))
         .order_by(Product.id.desc()).all()
     )
     return templates.TemplateResponse(
@@ -230,7 +243,7 @@ def category_page(handle: str, request: Request, db: Session = Depends(get_db)):
     # productos de la categoría y de sus subcategorías
     cat_ids = [cat.id] + [c.id for c in cat.subcategories]
     productos = (
-        db.query(Product)
+        _con_relaciones(db)
         .filter(Product.published.is_(True))
         .filter(Product.categories.any(Category.id.in_(cat_ids)))
         .order_by(Product.id.desc())

@@ -140,6 +140,20 @@ def store_image_bytes(content: bytes, content_type: str, handle: str, safe_name:
     return f"/static/{rel}", f"/static/{rel}"
 
 
+def _productos_completos(db: Session):
+    """Query de Product con variantes, imágenes y categorías cargadas de una.
+
+    El serializer toca esas tres relaciones por producto. Sin carga anticipada,
+    /products/all (que devuelve TODO el catálogo) hacía ~3 consultas por
+    producto: cientos de viajes a la Postgres remota. Con esto son 4 en total.
+    """
+    from sqlalchemy.orm import selectinload
+    return (db.query(Product)
+            .options(selectinload(Product.variants),
+                     selectinload(Product.images),
+                     selectinload(Product.categories)))
+
+
 def current_usd_rate(db: Session) -> float:
     s = db.get(Setting, "usd_rate")
     if s and s.value and s.value.get("rate"):
@@ -172,7 +186,7 @@ def store_info(db: Session = Depends(get_db)):
 @router.get("/products")
 def list_products(q: Optional[str] = None, page: int = 1, per_page: int = 200,
                   db: Session = Depends(get_db)):
-    query = db.query(Product)
+    query = _productos_completos(db)
     if q:
         like = f"%{q.lower()}%"
         query = query.filter(func.lower(Product.name).like(like) | func.lower(Product.brand).like(like))
@@ -182,7 +196,7 @@ def list_products(q: Optional[str] = None, page: int = 1, per_page: int = 200,
 
 @router.get("/products/all")
 def list_all_products(db: Session = Depends(get_db)):
-    return [product_to_tn(p) for p in db.query(Product).order_by(Product.id.desc()).all()]
+    return [product_to_tn(p) for p in _productos_completos(db).order_by(Product.id.desc()).all()]
 
 
 @router.get("/products/{pid}")
@@ -689,7 +703,7 @@ def list_orders(per_page: int = 50, page: int = 1, status: Optional[str] = None,
 
 @router.get("/stats")
 def stats(db: Session = Depends(get_db)):
-    productos = db.query(Product).all()
+    productos = _productos_completos(db).all()
     total_productos = len(productos)
     total_publicados = sum(1 for p in productos if p.published)
     total_variantes = db.query(Variant).count()
@@ -738,7 +752,7 @@ def stats(db: Session = Depends(get_db)):
 @router.get("/usd_prices")
 def usd_prices_get(db: Session = Depends(get_db)):
     prices = {}
-    for p in db.query(Product).all():
+    for p in _productos_completos(db).all():
         v = p.variants[0] if p.variants else None
         if v and v.usd_price is not None:
             prices[str(p.id)] = float(v.usd_price)
@@ -787,7 +801,7 @@ def usd_prices_seed(db: Session = Depends(get_db)):
     if rate <= 0:
         raise HTTPException(400, "USD rate inválido")
     count = 0
-    for p in db.query(Product).all():
+    for p in _productos_completos(db).all():
         for v in p.variants:
             if v.price:
                 v.usd_price = (v.price / rate).quantize(Decimal("0.01"))
@@ -802,7 +816,7 @@ def usd_prices_sync(db: Session = Depends(get_db)):
     actualiza nuestra propia base — el nombre se mantiene por compatibilidad del frontend)."""
     rate = Decimal(str(current_usd_rate(db)))
     updated_products = updated_variants = 0
-    for p in db.query(Product).all():
+    for p in _productos_completos(db).all():
         touched = False
         for v in p.variants:
             if v.usd_price is not None:
@@ -824,7 +838,7 @@ def export_excel(db: Session = Depends(get_db)):
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
 
-    productos = db.query(Product).order_by(Product.id.desc()).all()
+    productos = _productos_completos(db).order_by(Product.id.desc()).all()
     pedidos = db.query(Order).order_by(Order.created_at.desc()).limit(1000).all()
 
     wb = Workbook()

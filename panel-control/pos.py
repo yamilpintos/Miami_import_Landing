@@ -60,16 +60,26 @@ def _qr_svg(url: str) -> str:
 
 @router.get("/buscar")
 def buscar_productos(q: str = "", db: Session = Depends(get_db)):
-    """Busca productos para agregar a la venta. Devuelve solo lo vendible."""
+    """Busca productos para agregar a la venta. Devuelve solo lo vendible.
+
+    Carga anticipada de variantes e imágenes (selectinload): sin esto era N+1
+    —una consulta por producto para las variantes y otra para las imágenes—, y
+    contra la Postgres remota eso son cientos de viajes de ida y vuelta. Así son
+    3 consultas en total, sin importar cuántos productos vuelvan.
+    """
+    from sqlalchemy import func
+    from sqlalchemy.orm import selectinload
+
     query = (db.query(Product)
+             .options(selectinload(Product.variants),
+                      selectinload(Product.images))
              .filter(Product.published.is_(True))
              .order_by(Product.name))
     termino = (q or "").strip().lower()
     if termino:
         like = f"%{termino}%"
-        from sqlalchemy import func
         query = query.filter(func.lower(Product.name).like(like)
-                             | func.lower(Product.brand).like(like)
+                             | func.lower(func.coalesce(Product.brand, "")).like(like)
                              | func.lower(func.coalesce(Product.handle, "")).like(like))
 
     salida = []
@@ -83,11 +93,12 @@ def buscar_productos(q: str = "", db: Session = Depends(get_db)):
         } for v in p.variants if v.visible and (v.stock or 0) > 0 and v.price and v.price > 0]
         if not variantes:
             continue          # sin stock o sin precio: no se puede vender
+        imgs = p.images
         salida.append({
             "product_id": p.id,
             "nombre": p.name,
             "marca": p.brand or "",
-            "imagen": p.images[0].url if p.images else None,
+            "imagen": imgs[0].url if imgs else None,
             "variantes": variantes,
         })
     return {"productos": salida}
