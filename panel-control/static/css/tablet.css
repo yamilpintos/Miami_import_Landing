@@ -335,3 +335,20 @@
   /* Miniaturas de fotos del modal: girar/actualizar tocables */
   .modal-photo-rotate, .modal-photo-apply{ min-height:48px; font-size:15px; padding:0 16px; }
 }
+
+/* --------------------------------------------------------------------------
+   FIX TÁCTIL (iOS/Safari): un <div> dispara el clic al tocarlo solo si el
+   elemento TOCADO tiene cursor:pointer. Las tarjetas lo tienen, pero el dedo
+   cae sobre sus hijos (la foto, el texto), que no. Sin esto, tocar un producto
+   en la tablet no abría nada (el menú sí anda porque son <a>).
+
+   Se le da cursor:pointer a las cajas tocables y a TODOS sus descendientes,
+   salvo los controles que tienen su propia acción (botones, inputs).
+   -------------------------------------------------------------------------- */
+.product-card, .product-card *,
+.pos-card, .pos-card *,
+.order-row, .order-row *{
+  cursor:pointer;
+}
+.order-row .wa-btn,
+.pos-card .pos-talle{ cursor:pointer; }   /* explícito: tienen su propia acción */

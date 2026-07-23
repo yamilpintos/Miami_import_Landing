@@ -238,6 +238,13 @@ function renderProducts(prods) {
       </div>
     `;
   }).join('');
+
+  // Además de la delegación en document, se ata el clic DIRECTO a cada tarjeta.
+  // Un listener directo sobre el elemento dispara el toque en cualquier tablet
+  // (iOS incluido), donde la delegación sobre un <div> puede no hacerlo.
+  grid.querySelectorAll('.product-card').forEach(card => {
+    card.addEventListener('click', () => openProduct(Number(card.dataset.productId)));
+  });
 }
 
 $('#search').addEventListener('input', e => {
@@ -1009,8 +1016,8 @@ if (!location.hash) {
 document.addEventListener('click', ev => {
   const t = ev.target;
 
-  const card = t.closest('[data-product-id]');
-  if (card) return openProduct(Number(card.dataset.productId));
+  // Las tarjetas de producto se manejan con listener directo (ver
+  // renderProducts): más confiable en tablet. Acá NO se duplica.
 
   const adj = t.closest('[data-adjust]');
   if (adj) return adjustStock(Number(adj.dataset.pid), Number(adj.dataset.vid),
