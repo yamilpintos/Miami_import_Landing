@@ -312,3 +312,26 @@
   .pos-btn-libre{ width:100%; }
   .pos-libre__campos{ grid-template-columns:1fr; }
 }
+
+/* --- El modal de producto, cómodo en tablet ------------------------------- */
+@media (max-width: 1100px){
+  /* Casi pantalla completa: en 8.7" un modal chico centrado deja poco lugar
+     para tocar los +/− de stock. */
+  .modal-content{
+    width:94vw; max-width:640px; max-height:90vh; padding:22px 20px 28px;
+    border-radius:16px;
+  }
+  .modal-close{
+    top:8px; right:10px; min-width:52px; min-height:52px;
+    display:flex; align-items:center; justify-content:center; font-size:30px;
+    border-radius:10px;
+  }
+  /* Cada fila de talle: botones grandes y que no se aprieten */
+  .modal .modal-row{ gap:12px; padding:14px 0; flex-wrap:wrap; }
+  .modal .talle{ font-size:17px; min-width:auto; }
+  .modal .stock-input{
+    width:84px; min-height:52px; font-size:20px;
+  }
+  /* Miniaturas de fotos del modal: girar/actualizar tocables */
+  .modal-photo-rotate, .modal-photo-apply{ min-height:48px; font-size:15px; padding:0 16px; }
+}

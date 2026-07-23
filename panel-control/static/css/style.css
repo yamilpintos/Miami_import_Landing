@@ -323,7 +323,9 @@ h2{ font-size:18px; font-weight:600; letter-spacing:-.01em; margin:0 0 16px }
 .status-badge.cancelled{ background:#FCEFEF; color:var(--red) }
 
 /* ============ MODAL ============ */
-.modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; }
+/* z-index alto: en tablet la barra superior y el cajón del menú usan 70-80, y
+   con z-index:50 el modal quedaba DETRÁS de ellos (parecía que no abría). */
+.modal{ position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; }
 .modal-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.5); backdrop-filter:blur(4px); }
 .modal-content{
   position:relative; background:#FFFFFF; border-radius:var(--radius);
