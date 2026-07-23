@@ -427,67 +427,6 @@ def update_variant(pid: int, vid: int, body: dict, db: Session = Depends(get_db)
     return {"ok": True}
 
 
-@router.post("/catalogo_entrante/subir")
-async def catalogo_entrante_subir(
-    filename: str = Form(...),
-    name: str = Form(...),
-    brand: str = Form(""),
-    price: str = Form(...),
-    talles: str = Form(""),
-    stock_por_talle: int = Form(1),
-    publicado: bool = Form(True),
-    convertir_a_ars: bool = Form(False),
-    rotation: int = Form(0),
-    db: Session = Depends(get_db),
-):
-    """Crea el producto a partir de una foto de la bandeja de entrada.
-
-    Reusa exactamente la misma lógica que el alta manual; lo único distinto es
-    de dónde sale la imagen. Al terminar archiva la foto para que salga de la
-    lista de pendientes.
-    """
-    from starlette.datastructures import Headers, UploadFile as StarletteUploadFile
-
-    from catalogo_entrante import _safe_path, archivar_subida
-
-    f = _safe_path(filename)
-    if not f.exists():
-        raise HTTPException(404, "No existe la imagen")
-    data = f.read_bytes()
-
-    # Rotación opcional (las fotos del catálogo a veces vienen giradas).
-    if rotation % 360:
-        try:
-            from PIL import Image
-            src = Image.open(io.BytesIO(data))
-            fmt = (src.format or "JPEG").upper()
-            out = src.rotate(-(rotation % 360), expand=True)
-            if fmt == "JPEG" and out.mode in ("RGBA", "P"):
-                out = out.convert("RGB")
-            buf = io.BytesIO()
-            out.save(buf, format=fmt, quality=90)
-            data = buf.getvalue()
-        except ImportError:
-            raise HTTPException(503, "Falta Pillow para rotar la imagen")
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(400, f"No se pudo rotar la imagen: {exc}")
-
-    ctype = "image/png" if f.suffix.lower() == ".png" else (
-        "image/webp" if f.suffix.lower() == ".webp" else "image/jpeg")
-    upload = StarletteUploadFile(
-        file=io.BytesIO(data), filename=f.name,
-        headers=Headers({"content-type": ctype}),
-    )
-
-    result = await create_product(
-        name=name, brand=brand, description="", price=price, talles=talles,
-        stock_por_talle=stock_por_talle, publicado=publicado,
-        images=[upload], convertir_a_ars=convertir_a_ars, db=db,
-    )
-    archivar_subida(filename)  # recién ahora: si falló el alta, la foto queda
-    return result
-
-
 @router.post("/products")
 async def create_product(
     name: str = Form(...),

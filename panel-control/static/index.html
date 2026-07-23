@@ -82,10 +82,6 @@
       <span class="nav-icon">+</span>
       <span>Nuevo producto</span>
     </a>
-    <a class="nav-item" href="#catalogo-entrante" data-tab="catalogo-entrante">
-      <span class="nav-icon">⇲</span>
-      <span>Catálogo entrante</span>
-    </a>
     <a class="nav-item" href="#venta" data-tab="venta">
       <span class="nav-icon">🛒</span>
       <span>Vender</span>
@@ -255,30 +251,6 @@
     <div id="alta-result" class="result-card hidden"></div>
   </section>
 
-  <!-- ========= CATÁLOGO ENTRANTE ========= -->
-  <section class="tab" data-tab="catalogo-entrante">
-    <header class="page-header">
-      <div>
-        <div class="eyebrow">Stock nuevo · pendiente de cargar</div>
-        <h1>Catálogo entrante</h1>
-      </div>
-      <button id="btn-refresh-entrante" class="btn-ghost">Actualizar</button>
-    </header>
-
-    <div class="panel">
-      <p><b>1.</b> Elegí las fotos del stock nuevo y subilas acá. <b>2.</b> Cada una aparece como tarjeta: el <b>talle</b> y la <b>marca</b> se deducen del nombre del archivo — revisalos, completá <b>nombre</b> y <b>precio</b>, y tocá <b>Publicar en la tienda</b>.</p>
-
-      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <input type="file" id="entrante-files" accept="image/*" multiple hidden />
-        <button type="button" id="btn-entrante-pick" class="btn-primary">Elegir fotos…</button>
-        <span id="entrante-upload-status" style="color:var(--ink-mute);font-size:13px"></span>
-      </div>
-    </div>
-
-    <div id="catalogo-entrante-list" class="grid-entrante">
-      <div class="loading">Cargando…</div>
-    </div>
-  </section>
 
   <!-- ========= PEDIDOS ========= -->
   <!-- ========= VENDER (mostrador) ========= -->

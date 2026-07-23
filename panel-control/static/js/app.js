@@ -69,16 +69,15 @@ async function api(path, opts = {}) {
 }
 
 // ============ Tabs / routing por hash ============
-// Cada pestaña tiene su propia URL (#dashboard, #catalogo-entrante, etc.) para
+// Cada pestaña tiene su propia URL (#dashboard, #venta, etc.) para
 // poder entrar directo, compartir el link y usar atrás/adelante del navegador.
 const VALID_TABS = [
-  'dashboard', 'productos', 'alta', 'catalogo-entrante', 'venta', 'pedidos',
+  'dashboard', 'productos', 'alta', 'venta', 'pedidos',
   'estadisticas', 'precios-usd', 'whatsapp', 'acciones',
 ];
 const TAB_LOADERS = {
   dashboard: loadDashboard,
   productos: () => { if (PRODUCTS_CACHE.length === 0) loadProducts(); },
-  'catalogo-entrante': loadCatalogoEntrante,
   venta: () => posBuscar($('#pos-buscar')?.value || ''),
   pedidos: loadOrders,
   estadisticas: loadStatsDetail,
@@ -893,194 +892,6 @@ $('#btn-export').addEventListener('click', () => {
   window.location.href = '/api/export/excel';
 });
 
-// ============ Catálogo entrante ============
-function escapeHtml(s) {
-  // String(s ?? '') — NO `s || ''`: con un número, array o booleano el `||` los
-  // dejaba pasar tal cual y `.replace` no existe -> TypeError que abortaba el
-  // render entero (los números de pedido y los precios rompían pantallas
-  // completas). Y con `||` el 0 se convertía en '' (stock 0 salía vacío).
-  return String(s ?? '')
-    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-async function loadCatalogoEntrante() {
-  const cnt = $('#catalogo-entrante-list');
-  cnt.innerHTML = '<div class="loading">Cargando…</div>';
-  try {
-    const r = await api('/api/catalogo_entrante');
-    if (!r.available) {
-      cnt.innerHTML = `<div class="panel" style="border-color:rgba(220,143,56,0.5);">
-        <p><b>⚠️ No encuentro la carpeta de catálogo entrante.</b></p>
-        <p>Esperaba: <code style="font-size:11px;">${esc(r.dir)}</code></p></div>`;
-      return;
-    }
-    if (!r.items.length) {
-      cnt.innerHTML = '<div class="loading">No hay imágenes pendientes. ✓ Todo cargado.</div>';
-      return;
-    }
-    cnt.innerHTML = r.items.map(it => {
-      const fn = escapeHtml(it.filename);
-      const marcaWarn = it.revisar_marca
-        ? '<span class="entrante-warn">REVISAR marca</span>' : '';
-      const talleWarn = !it.talles_sugeridos?.length
-        ? `<span class="entrante-warn">talle: ${escapeHtml(it.talle_original) || 'completar'}</span>` : '';
-      return `
-      <div class="entrante-card" data-filename="${esc(fn)}">
-        <div class="entrante-img" data-rotation="0">
-          <img src="${esc(it.img_url)}" alt="${esc(fn)}" loading="lazy">
-          <span class="entrante-page">${escapeHtml(it.pagina)}</span>
-          <button class="entrante-rotate" type="button" title="Rotar 90° (para subirla derecha)">↻</button>
-        </div>
-        <div class="entrante-fields">
-          <label>Nombre
-            <input class="e-name" type="text" value="${escapeHtml(it.nombre_sugerido)}" />
-          </label>
-          <label>Marca ${marcaWarn}
-            <input class="e-brand" type="text" value="${escapeHtml(it.marca_sugerida)}" placeholder="Ej: Off-White" />
-          </label>
-          <div class="entrante-row">
-            <label>Talles ${talleWarn}
-              <input class="e-talles" type="text" value="${escapeHtml(it.talles_sugeridos)}" placeholder="S, M, L (vacío = único)" />
-            </label>
-            <label style="max-width:90px;">Stock c/talle
-              <input class="e-stock" type="number" min="0" value="1" />
-            </label>
-          </div>
-          <div class="entrante-row">
-            <label>Precio
-              <input class="e-price" type="number" step="0.01" placeholder="430" />
-            </label>
-            <label class="checkbox-label" style="align-self:end;">
-              <input class="e-usd" type="checkbox" checked />
-              <span>USD → ARS</span>
-            </label>
-          </div>
-          <label class="checkbox-label">
-            <input class="e-pub" type="checkbox" checked />
-            <span>Publicar ya</span>
-          </label>
-          <div class="entrante-actions">
-            <button class="btn-primary e-subir" type="button">Publicar en la tienda</button>
-            <button class="btn-ghost e-descartar" type="button">Descartar</button>
-          </div>
-          <div class="entrante-status"></div>
-        </div>
-      </div>`;
-    }).join('');
-
-    cnt.querySelectorAll('.entrante-card').forEach(card => {
-      card.querySelector('.e-subir').addEventListener('click', () => subirEntrante(card));
-      card.querySelector('.e-descartar').addEventListener('click', () => descartarEntrante(card));
-      card.querySelector('.entrante-rotate')?.addEventListener('click', () => rotarEntrante(card));
-    });
-  } catch (e) {
-    cnt.innerHTML = '<div class="loading">Error: ' + esc(e.message) + '</div>';
-  }
-}
-
-function rotarEntrante(card) {
-  const box = card.querySelector('.entrante-img');
-  const img = box.querySelector('img');
-  const rot = ((parseInt(box.dataset.rotation) || 0) + 90) % 360;
-  box.dataset.rotation = rot;
-  img.classList.remove('rot-90', 'rot-180', 'rot-270');
-  if (rot) img.classList.add('rot-' + rot);
-}
-
-async function subirEntrante(card) {
-  const filename = card.dataset.filename;
-  const rotation = (card.querySelector('.entrante-img')?.dataset.rotation) || '0';
-  const name = card.querySelector('.e-name').value.trim();
-  const brand = card.querySelector('.e-brand').value.trim();
-  const price = card.querySelector('.e-price').value.trim();
-  const talles = card.querySelector('.e-talles').value.trim();
-  const stock = card.querySelector('.e-stock').value || '1';
-  const usd = card.querySelector('.e-usd').checked;
-  const pub = card.querySelector('.e-pub').checked;
-  const status = card.querySelector('.entrante-status');
-
-  if (!name) { status.textContent = '✗ Falta el nombre'; return; }
-  if (!brand) { status.textContent = '✗ Falta la marca'; return; }
-  if (!price || Number(price) <= 0) { status.textContent = '✗ Falta el precio'; return; }
-
-  const fd = new FormData();
-  fd.set('filename', filename);
-  fd.set('name', name);
-  fd.set('brand', brand);
-  fd.set('price', price);
-  fd.set('talles', talles);
-  fd.set('stock_por_talle', stock);
-  fd.set('publicado', pub ? 'true' : 'false');
-  fd.set('convertir_a_ars', usd ? 'true' : 'false');
-  fd.set('rotation', rotation);
-
-  const btn = card.querySelector('.e-subir');
-  btn.disabled = true;
-  status.textContent = '⏳ Creando producto + subiendo imagen…';
-  try {
-    const r = await fetch(API + '/api/catalogo_entrante/subir', { method: 'POST', body: fd });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || r.statusText);
-    toast('✓ ' + name + ' subido a Tiendanube', 'success');
-    PRODUCTS_CACHE = [];
-    // Sacar la tarjeta con una transición simple
-    card.style.opacity = '0.4';
-    card.querySelector('.entrante-fields').innerHTML =
-      `<div class="result-card"><b>✓ Cargado</b> (ID ${data.tiendanube_id})<br>
-       <a href="${esc(data.url)}" target="_blank">Ver en la tienda ↗</a></div>`;
-    setTimeout(() => card.remove(), 1200);
-  } catch (e) {
-    status.textContent = '✗ Error: ' + e.message;
-    toast('Error: ' + e.message, 'error');
-    btn.disabled = false;
-  }
-}
-
-async function descartarEntrante(card) {
-  if (!confirm('¿Sacar esta imagen de pendientes? (se mueve a "descartados", no se borra)')) return;
-  const fd = new FormData();
-  fd.set('filename', card.dataset.filename);
-  try {
-    await fetch(API + '/api/catalogo_entrante/descartar', { method: 'POST', body: fd });
-    card.remove();
-    toast('Descartado', 'success');
-  } catch (e) {
-    toast('Error: ' + e.message, 'error');
-  }
-}
-
-$('#btn-refresh-entrante')?.addEventListener('click', loadCatalogoEntrante);
-
-// ============ Subida de fotos al catálogo entrante ============
-// El panel viejo leía una carpeta del disco de la PC. Acá el panel corre en el
-// servidor, así que las fotos entran por el navegador. El resto del flujo
-// (deducir marca/talle del nombre del archivo) es idéntico.
-$('#btn-entrante-pick')?.addEventListener('click', () => $('#entrante-files')?.click());
-
-$('#entrante-files')?.addEventListener('change', async (ev) => {
-  const files = Array.from(ev.target.files || []);
-  if (!files.length) return;
-  const status = $('#entrante-upload-status');
-  status.textContent = `Subiendo ${files.length} foto(s)…`;
-  const fd = new FormData();
-  files.forEach(f => fd.append('files', f));
-  try {
-    const r = await fetch(API + '/api/catalogo_entrante/upload', { method: 'POST', body: fd });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || r.statusText);
-    const n = (data.guardadas || []).length;
-    const bad = (data.rechazadas || []).length;
-    status.textContent = `${n} subida(s)` + (bad ? ` · ${bad} rechazada(s)` : '');
-    toast(`${n} foto(s) subidas`, 'success');
-    ev.target.value = '';           // permite volver a elegir los mismos archivos
-    loadCatalogoEntrante();
-  } catch (e) {
-    status.textContent = '';
-    toast('Error subiendo: ' + e.message, 'error');
-  }
-});
 
 // ============ Activación del segundo factor (MFA) ============
 // El panel exige TOTP: sin activarlo, todos los endpoints responden 403. Esta
